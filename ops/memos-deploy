@@ -147,6 +147,12 @@ if [[ -z "$previous_image" && -f "$env_file" ]]; then
   previous_image="$(sed -n 's/^MEMOS_IMAGE=//p' "$env_file" | head -n 1)"
 fi
 
+# Keep the tailnet route coupled to the local service. This is idempotent and
+# repairs a missing Serve listener before the live container is changed.
+if command -v tailscale >/dev/null 2>&1; then
+  tailscale serve --yes --bg --https=8450 http://127.0.0.1:5230 >/dev/null
+fi
+
 deployment_started=true
 write_image_env "$image"
 compose up --detach --no-deps memos
