@@ -6,6 +6,7 @@ import { attachmentKeys } from "@/hooks/useAttachmentQueries";
 import { memoKeys } from "@/hooks/useMemoQueries";
 import { spaceKeys } from "@/hooks/useSpaceQueries";
 import { userKeys } from "@/hooks/useUserQueries";
+import { publishAttachmentProgress } from "@/utils/attachmentProgress";
 
 /**
  * Reconnection parameters for SSE connection.
@@ -21,6 +22,7 @@ const SSE_SYNC_CHANNEL_NAME = "memos-sse-sync";
 
 const MEMO_CHANGED_SSE_EVENT_TYPE = "memo.changed" as const;
 const SPACE_CHANGED_SSE_EVENT_TYPE = "space.changed" as const;
+const ATTACHMENT_PROGRESS_SSE_EVENT_TYPE = "attachment.progress" as const;
 
 // ---------------------------------------------------------------------------
 // Shared connection status store (singleton)
@@ -58,7 +60,11 @@ export function useSSEConnectionStatus(): SSEConnectionStatus {
 }
 
 interface SSEChangeEvent {
-  type: typeof MEMO_CHANGED_SSE_EVENT_TYPE | typeof SPACE_CHANGED_SSE_EVENT_TYPE;
+  type: typeof MEMO_CHANGED_SSE_EVENT_TYPE | typeof SPACE_CHANGED_SSE_EVENT_TYPE | typeof ATTACHMENT_PROGRESS_SSE_EVENT_TYPE;
+  name?: string;
+  filename?: string;
+  stage?: string;
+  progress?: number;
 }
 
 type SSESyncMessage =
@@ -461,6 +467,14 @@ async function consumeSSEStream(body: ReadableStream<Uint8Array>, signal: AbortS
 
 function handleSSEEvent(event: SSEChangeEvent, queryClient: ReturnType<typeof useQueryClient>) {
   switch (event.type) {
+    case ATTACHMENT_PROGRESS_SSE_EVENT_TYPE:
+      publishAttachmentProgress({
+        name: event.name ?? "",
+        filename: event.filename ?? "attachment",
+        stage: event.stage ?? "compressing",
+        progress: event.progress ?? 0,
+      });
+      break;
     case MEMO_CHANGED_SSE_EVENT_TYPE:
       invalidateLiveMemoQueries(queryClient);
       break;

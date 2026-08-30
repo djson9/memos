@@ -64,7 +64,7 @@ func handleSSE(c *echo.Context, hub *SSEHub, authenticator *auth.Authenticator) 
 	}
 
 	// Subscribe to the hub.
-	client := hub.Subscribe()
+	client := hub.Subscribe(userID)
 	defer hub.Unsubscribe(client)
 
 	ctx := c.Request().Context()

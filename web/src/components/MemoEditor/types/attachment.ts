@@ -35,6 +35,17 @@ export interface LocalFile {
   readonly mediaMetadata?: Promise<MediaMetadata | undefined>;
 }
 
+export type UploadProgressStage = "preparing" | "uploading" | "received" | "queued" | "compressing" | "saving" | "complete";
+
+export interface UploadProgress {
+  readonly filename: string;
+  readonly stage: UploadProgressStage;
+  readonly filePercent: number;
+  readonly overallPercent: number;
+  readonly currentFile: number;
+  readonly totalFiles: number;
+}
+
 const AUDIO_RECORDING_FILENAME_RE = /^(?:voice-(?:recording|note)|audio-recording)-(\d{8})-(\d{4,6})/i;
 
 export const isAudioRecordingFilename = (filename: string): boolean => AUDIO_RECORDING_FILENAME_RE.test(filename);

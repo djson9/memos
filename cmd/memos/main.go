@@ -55,6 +55,10 @@ func init() {
 	viper.SetDefault("demo", false)
 	viper.SetDefault("driver", "sqlite")
 	viper.SetDefault("port", 8081)
+	viper.SetDefault("media-compression", false)
+	viper.SetDefault("media-compression-max-input-mb", 200)
+	viper.SetDefault("media-compression-cpu-limit", 150)
+	viper.SetDefault("allow-unauthenticated-attachments", false)
 
 	rootCmd.Flags().Bool("demo", false, "enable demo mode")
 	rootCmd.Flags().String("addr", "", "address of server")
@@ -67,6 +71,10 @@ func init() {
 	rootCmd.Flags().Bool("allow-private-webhooks", false, "allow webhooks to access any private/reserved IP address")
 	rootCmd.Flags().StringSlice("webhook-private-network-allowlist", nil, "private webhook destinations to allow (exact hostname, IP, or CIDR)")
 	rootCmd.Flags().String("log-level", "info", "log verbosity level (debug, info, warn, error)")
+	rootCmd.Flags().Bool("media-compression", false, "compress image and video attachments before storage")
+	rootCmd.Flags().Int("media-compression-max-input-mb", 200, "maximum source media size accepted for compression in MiB")
+	rootCmd.Flags().Int("media-compression-cpu-limit", 150, "compressor CPU limit as a percentage of one core")
+	rootCmd.Flags().Bool("allow-unauthenticated-attachments", false, "serve attachments linked to memos without authentication")
 
 	if err := rootCmd.Flags().MarkDeprecated("allow-private-webhooks", "use --webhook-private-network-allowlist to allow only required destinations"); err != nil {
 		panic(err)
@@ -83,12 +91,15 @@ func init() {
 		"allow-private-webhooks",
 		"webhook-private-network-allowlist",
 		"log-level",
+		"media-compression",
+		"media-compression-max-input-mb",
+		"media-compression-cpu-limit",
+		"allow-unauthenticated-attachments",
 	} {
 		if err := viper.BindPFlag(key, rootCmd.Flags().Lookup(key)); err != nil {
 			panic(err)
 		}
 	}
-
 	viper.SetEnvPrefix("memos")
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 	viper.AutomaticEnv()
@@ -98,16 +109,20 @@ func init() {
 
 func runServer() error {
 	instanceProfile := &profile.Profile{
-		Demo:        viper.GetBool("demo"),
-		Addr:        viper.GetString("addr"),
-		Port:        viper.GetInt("port"),
-		UNIXSock:    viper.GetString("unix-sock"),
-		Data:        viper.GetString("data"),
-		Driver:      viper.GetString("driver"),
-		DSN:         viper.GetString("dsn"),
-		InstanceURL: viper.GetString("instance-url"),
-		Version:     version.GetCurrentVersion(),
-		Commit:      version.Commit,
+		Demo:                            viper.GetBool("demo"),
+		Addr:                            viper.GetString("addr"),
+		Port:                            viper.GetInt("port"),
+		UNIXSock:                        viper.GetString("unix-sock"),
+		Data:                            viper.GetString("data"),
+		Driver:                          viper.GetString("driver"),
+		DSN:                             viper.GetString("dsn"),
+		InstanceURL:                     viper.GetString("instance-url"),
+		Version:                         version.GetCurrentVersion(),
+		Commit:                          version.Commit,
+		MediaCompression:                viper.GetBool("media-compression"),
+		MediaCompressionMaxInputMB:      viper.GetInt("media-compression-max-input-mb"),
+		MediaCompressionCPULimit:        viper.GetInt("media-compression-cpu-limit"),
+		AllowUnauthenticatedAttachments: viper.GetBool("allow-unauthenticated-attachments"),
 	}
 
 	allowPrivateWebhooks := viper.GetBool("allow-private-webhooks")

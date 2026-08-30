@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/sync/semaphore"
 
+	"github.com/usememos/memos/internal/attachmentcompression"
 	"github.com/usememos/memos/internal/httpgetter"
 	"github.com/usememos/memos/internal/markdown"
 	"github.com/usememos/memos/internal/profile"
@@ -44,8 +45,10 @@ type APIV1Service struct {
 	NotificationEmailSender notification.EmailSender
 
 	// thumbnailSemaphore limits concurrent thumbnail generation to prevent memory exhaustion
-	thumbnailSemaphore       *semaphore.Weighted
-	imageProcessingSemaphore *semaphore.Weighted
+	thumbnailSemaphore        *semaphore.Weighted
+	imageProcessingSemaphore  *semaphore.Weighted
+	mediaCompressionSemaphore *semaphore.Weighted
+	attachmentCompressor      attachmentCompressor
 
 	// instanceStatsCache memoizes GetInstanceStats results for instanceStatsCacheTTL.
 	instanceStatsCache instanceStatsCache
@@ -59,15 +62,22 @@ func NewAPIV1Service(secret string, profile *profile.Profile, store *store.Store
 		markdown.WithTagExtension(),
 		markdown.WithMentionExtension(),
 	)
+	mediaCompressionMaxInputBytes := profile.MediaCompressionMaxInputMB * MebiByte
 	service := &APIV1Service{
-		Secret:                   secret,
-		Profile:                  profile,
-		Store:                    store,
-		MarkdownService:          markdownService,
-		SSEHub:                   NewSSEHub(),
-		NotificationEmailSender:  nil,
-		thumbnailSemaphore:       semaphore.NewWeighted(3), // Limit to 3 concurrent thumbnail generations
-		imageProcessingSemaphore: semaphore.NewWeighted(2),
+		Secret:                    secret,
+		Profile:                   profile,
+		Store:                     store,
+		MarkdownService:           markdownService,
+		SSEHub:                    NewSSEHub(),
+		NotificationEmailSender:   nil,
+		thumbnailSemaphore:        semaphore.NewWeighted(3), // Limit to 3 concurrent thumbnail generations
+		imageProcessingSemaphore:  semaphore.NewWeighted(2),
+		mediaCompressionSemaphore: semaphore.NewWeighted(1),
+		attachmentCompressor: attachmentcompression.New(attachmentcompression.Config{
+			Enabled:         profile.MediaCompression,
+			MaxInputBytes:   mediaCompressionMaxInputBytes,
+			CPULimitPercent: profile.MediaCompressionCPULimit,
+		}),
 	}
 	service.linkMetadataFetcher = httpgetter.NewHTMLMetaFetcher()
 	return service

@@ -1,6 +1,9 @@
 package v1
 
-import "sync"
+import (
+	"encoding/json"
+	"sync"
+)
 
 const (
 	sseClientEventBufferSize = 32
@@ -12,6 +15,7 @@ const (
 type SSEClient struct {
 	events chan []byte
 	done   chan struct{}
+	userID int32
 }
 
 // SSEHub manages SSE client connections and broadcasts events.
@@ -31,11 +35,16 @@ func NewSSEHub() *SSEHub {
 
 // Subscribe registers a new client and returns it.
 // The caller must call Unsubscribe when done.
-func (h *SSEHub) Subscribe() *SSEClient {
+func (h *SSEHub) Subscribe(userIDs ...int32) *SSEClient {
+	var userID int32
+	if len(userIDs) > 0 {
+		userID = userIDs[0]
+	}
 	c := &SSEClient{
 		// Buffer a few events so a slow client doesn't block broadcasting.
 		events: make(chan []byte, sseClientEventBufferSize),
 		done:   make(chan struct{}),
+		userID: userID,
 	}
 	h.mu.Lock()
 	if h.closed {
@@ -89,10 +98,55 @@ func (h *SSEHub) publishSpaceChanged() {
 	h.publish([]byte(spaceChangedSSEFrame))
 }
 
+// publishAttachmentProgress sends upload state only to the user who owns the
+// upload. Unlike cache invalidations, filenames and upload identifiers are not
+// safe to broadcast to every authenticated client.
+func (h *SSEHub) publishAttachmentProgress(userID int32, name, filename, stage string, progress int) {
+	payload, err := json.Marshal(struct {
+		Type     string `json:"type"`
+		Name     string `json:"name"`
+		Filename string `json:"filename"`
+		Stage    string `json:"stage"`
+		Progress int    `json:"progress"`
+	}{
+		Type:     "attachment.progress",
+		Name:     name,
+		Filename: filename,
+		Stage:    stage,
+		Progress: progress,
+	})
+	if err != nil {
+		return
+	}
+	frame := append([]byte("data: "), payload...)
+	frame = append(frame, '\n', '\n')
+	h.publishToUser(userID, frame)
+}
+
 func (h *SSEHub) publish(frame []byte) {
 	var slowClients []*SSEClient
 	h.mu.RLock()
 	for c := range h.clients {
+		select {
+		case c.events <- frame:
+		default:
+			slowClients = append(slowClients, c)
+		}
+	}
+	h.mu.RUnlock()
+
+	for _, c := range slowClients {
+		h.Unsubscribe(c)
+	}
+}
+
+func (h *SSEHub) publishToUser(userID int32, frame []byte) {
+	var slowClients []*SSEClient
+	h.mu.RLock()
+	for c := range h.clients {
+		if c.userID != userID {
+			continue
+		}
 		select {
 		case c.events <- frame:
 		default:

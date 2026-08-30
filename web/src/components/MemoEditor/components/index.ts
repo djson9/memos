@@ -1,5 +1,6 @@
 // UI components for MemoEditor
 
+export * from "./AttachmentUploadProgress";
 export * from "./AudioRecorderPanel";
 export * from "./EditorContent";
 export * from "./EditorMetadata";

@@ -620,6 +620,9 @@ func (s *FileServerService) checkAttachmentPermission(ctx context.Context, c *ec
 	if memo == nil {
 		return access.MemoReadClassPrivate, echo.NewHTTPError(http.StatusNotFound, "memo not found")
 	}
+	if s.Profile.AllowUnauthenticatedAttachments {
+		return access.MemoReadClassPrivate, nil
+	}
 
 	allowAnonymous, err := s.Store.AllowsAnonymousAccess(ctx)
 	if err != nil {

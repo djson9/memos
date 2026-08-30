@@ -28,6 +28,12 @@ Attachment access follows memo visibility, evaluated by `server/access.CheckMemo
 
 Avatars are public on instances that allow anonymous access; private instances require authentication.
 
+Operators may set `MEMOS_ALLOW_UNAUTHENTICATED_ATTACHMENTS=true` to expose
+attachments already linked to a memo without a session or token; unlinked
+uploads remain protected. Enable this only when the service is reachable
+exclusively through a trusted private network or access-controlled reverse
+proxy.
+
 ## Serving behavior
 
 - **Video/audio** are streamed with range-request support (`http.ServeFile` / `http.ServeContent` for local and database storage); S3-backed media is proxied with ranged `GetObject` requests.

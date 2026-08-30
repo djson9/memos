@@ -53,7 +53,12 @@ export function useMemoSave({
     dispatch(actions.setLoading("saving", true));
 
     try {
-      const result = await memoService.save(state, { memoName, parentMemoName, space: defaultSpace });
+      const result = await memoService.save(state, {
+        memoName,
+        parentMemoName,
+        space: defaultSpace,
+        onUploadProgress: (progress) => dispatch(actions.setUploadProgress(progress)),
+      });
 
       if (!result.hasChanges) {
         toast.error(t("editor.no-changes-detected"));
@@ -97,6 +102,7 @@ export function useMemoSave({
         fallbackMessage: errorService.getErrorMessage(error),
       });
     } finally {
+      dispatch(actions.setUploadProgress(undefined));
       dispatch(actions.setLoading("saving", false));
     }
   }, [

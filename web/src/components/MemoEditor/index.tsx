@@ -8,7 +8,14 @@ import { cn } from "@/lib/utils";
 import { InstanceSetting_Key } from "@/types/proto/api/v1/instance_service_pb";
 import { useTranslate } from "@/utils/i18n";
 import { convertVisibilityFromString } from "@/utils/memo";
-import { AudioRecorderPanel, EditorContent, EditorMetadata, FocusModeOverlay, TimestampPopover } from "./components";
+import {
+  AttachmentUploadProgress,
+  AudioRecorderPanel,
+  EditorContent,
+  EditorMetadata,
+  FocusModeOverlay,
+  TimestampPopover,
+} from "./components";
 import { FOCUS_MODE_STYLES, FORMATTING_TOOLBAR_STORAGE_KEY } from "./constants";
 import {
   splitInlineLocalFiles,
@@ -361,6 +368,7 @@ const MemoEditorImpl: React.FC<MemoEditorProps> = ({
             onInsertAttachments={inlineImageUpload.insertRemoteImages}
             onInsertLocalFiles={inlineImageUpload.insertLocalImages}
           />
+          <AttachmentUploadProgress />
           <EditorToolbar
             onSave={handleSave}
             onCancel={onCancel ? handleCancel : undefined}

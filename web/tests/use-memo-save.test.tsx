@@ -21,6 +21,7 @@ vi.mock("@/components/MemoEditor/state", () => ({
     actions: {
       reset: () => ({ type: "reset" }),
       setLoading: (key: string, value: boolean) => ({ type: "set-loading", key, value }),
+      setUploadProgress: (progress?: unknown) => ({ type: "set-upload-progress", progress }),
       setMetadata: () => ({ type: "set-metadata" }),
       setTimestamps: () => ({ type: "set-timestamps" }),
     },

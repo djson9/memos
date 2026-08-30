@@ -1,4 +1,4 @@
-import type { LocalFile } from "../types/attachment";
+import type { LocalFile, UploadProgress } from "../types/attachment";
 import type { EditorAction, EditorState, LoadingKey } from "./types";
 
 export const editorActions = {
@@ -59,6 +59,11 @@ export const editorActions = {
   setRecorderBusy: (value: boolean): EditorAction => ({
     type: "SET_RECORDER_BUSY",
     payload: value,
+  }),
+
+  setUploadProgress: (progress?: UploadProgress): EditorAction => ({
+    type: "SET_UPLOAD_PROGRESS",
+    payload: progress,
   }),
 
   reset: (): EditorAction => ({
