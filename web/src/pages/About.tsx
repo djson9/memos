@@ -34,14 +34,12 @@ const About = () => {
   const t = useTranslate();
   const { profile, generalSetting } = useInstance();
 
-  // Instance identity: custom branding when the admin has set it, Memos defaults otherwise.
   const customProfile = generalSetting.customProfile;
   const instanceTitle = customProfile?.title || DEFAULT_TITLE;
   const instanceTagline = customProfile?.description || DEFAULT_TAGLINE;
   const instanceLogo = customProfile?.logoUrl || DEFAULT_LOGO;
   const isCustomBranded = instanceTitle !== DEFAULT_TITLE;
 
-  // Dev builds report version "dev" and commit "unknown"; show the raw version and skip the commit row.
   const hasSemver = isSemver(profile.version);
   const releaseUrl = hasSemver ? `${GITHUB_RELEASE_URL_PREFIX}${profile.version}` : "";
   const versionLabel = hasSemver ? `v${profile.version}` : profile.version;
@@ -65,21 +63,25 @@ const About = () => {
   }
 
   const projectLinks = [
-    { label: t("about.official-website"), note: "the project homepage", href: "https://usememos.com/" },
-    { label: t("about.documents"), note: "deploy, configure, use", href: "https://usememos.com/docs" },
-    { label: "API Docs", note: "REST + gRPC reference", href: "https://usememos.com/docs/api" },
-    { label: t("about.github-repository"), note: "source, issues, releases", href: "https://github.com/usememos/memos" },
-    { label: "Web Clipper", note: t("about.web-clipper-platforms"), href: WEB_CLIPPER_URL, icon: ScissorsIcon },
+    { label: t("about.official-website"), note: t("about.official-website-note"), href: "https://usememos.com/" },
+    { label: t("about.documents"), note: t("about.documents-note"), href: "https://usememos.com/docs" },
+    { label: t("about.api-docs"), note: t("about.api-docs-note"), href: "https://usememos.com/docs/api" },
+    {
+      label: t("about.github-repository"),
+      note: t("about.github-repository-note"),
+      href: "https://github.com/usememos/memos",
+    },
+    { label: t("about.web-clipper"), note: t("about.web-clipper-platforms"), href: WEB_CLIPPER_URL, icon: ScissorsIcon },
   ];
 
   return (
-    <section className="mx-auto w-full max-w-5xl min-h-full flex flex-col justify-start items-start sm:pt-3 md:pt-6 pb-8">
-      <div className="mx-auto w-full max-w-2xl px-1 py-6 sm:py-8">
+    <section className="min-h-full w-full">
+      <div className="mx-auto w-full max-w-2xl py-6 sm:py-8">
         <header>
           <img className="size-10 shrink-0 select-none rounded-md" src={instanceLogo} alt="" draggable={false} />
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <h1 className="text-lg font-semibold tracking-tight text-foreground">{instanceTitle}</h1>
-            {profile.demo && <Badge variant="warning">Demo</Badge>}
+            {profile.demo && <Badge variant="warning">{t("about.demo")}</Badge>}
           </div>
           <p className="mt-1 max-w-md text-[26px] font-light leading-snug tracking-[-0.015em] text-foreground">{instanceTagline}</p>
         </header>
@@ -98,32 +100,27 @@ const About = () => {
 
         <section className="mt-9">
           <SectionLabel>{t("about.project")}</SectionLabel>
-          <nav aria-label="Project links" className="mt-2.5 border-t border-border">
+          <nav aria-label={t("about.project-links")} className="mt-2.5 border-t border-border">
             {projectLinks.map((link) => (
               <a
                 key={link.href}
-                className="group flex items-baseline justify-between gap-4 border-b border-border/60 py-2.5"
+                className="group flex items-center justify-between gap-4 border-b border-border/60 py-2.5"
                 href={link.href}
                 target="_blank"
                 rel="noreferrer"
               >
-                <span className="flex min-w-0 items-baseline gap-2">
-                  {link.icon && <link.icon className="size-3.5 shrink-0 translate-y-0.5 text-muted-foreground" />}
-                  <span className="text-[13px] font-medium text-foreground group-hover:underline group-hover:underline-offset-2">
+                <span className="flex min-w-0 items-center gap-2">
+                  {link.icon && <link.icon className="size-3.5 shrink-0 text-muted-foreground" />}
+                  <span className="truncate text-[13px] font-medium text-foreground group-hover:underline group-hover:underline-offset-2">
                     {link.label}
                   </span>
                   <span className="hidden truncate text-xs text-muted-foreground sm:inline">{link.note}</span>
                 </span>
-                <span className="inline-flex shrink-0 items-center gap-1 font-mono text-xs text-muted-foreground group-hover:text-foreground">
-                  {link.href.replace("https://", "")}
-                  <ExternalLinkIcon className="size-3" />
-                </span>
+                <ExternalLinkIcon className="size-3 shrink-0 text-muted-foreground group-hover:text-foreground" />
               </a>
             ))}
           </nav>
         </section>
-
-        <p className="mt-8 text-xs text-muted-foreground">Free and open source under the MIT license.</p>
       </div>
     </section>
   );

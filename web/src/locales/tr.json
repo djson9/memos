@@ -24,7 +24,6 @@
     "archive": "Arşiv",
     "archived": "Arşivlendi",
     "attachments": "Ekler",
-    "auto-expand": "Otomatik genişlet",
     "avatar": "Profil Resmi",
     "basic": "Temel",
     "beta": "Beta sürümü",
@@ -66,6 +65,7 @@
     "last-updated-at": "Son güncelleme",
     "learn-more": "Daha fazla bilgi",
     "link": "Bağlantı",
+    "manage": "Yönet",
     "map": "Harita",
     "mark": "İşaretle",
     "memo": "Not",
@@ -96,8 +96,6 @@
     "select": "Seç",
     "settings": "Ayarlar",
     "share": "Paylaş",
-    "shortcut-filter": "Kısayol filtresi",
-    "shortcuts": "Kısayollar",
     "sign-in": "Giriş yap",
     "sign-in-with": "{{provider}} ile giriş yap",
     "sign-out": "Çıkış yap",
@@ -115,6 +113,7 @@
     "username": "Kullanıcı adı",
     "version": "Sürüm",
     "visibility": "Görünürlük",
+    "views": "Görünümler",
     "yourself": "Kendiniz",
     "empty-placeholder": "Boş",
     "unlink": "Bağlantıyı kaldır"
@@ -205,6 +204,7 @@
     "filters": {
       "has-code": "Kod içerir",
       "has-link": "Bağlantı içerir",
+      "has-location": "Konum içerir",
       "has-task-list": "Yapılacaklar listesi içerir",
       "label": "Filtreler"
     },
@@ -455,9 +455,9 @@
       "memo-defaults-title": "Not varsayılanları",
       "theme-description": "Seçilen temayı bu cihaza hemen uygular."
     },
-    "shortcut": {
-      "delete-confirm": "`{{title}}` kısayolunu silmek istediğinizden emin misiniz?",
-      "delete-success": "`{{title}}` kısayolu başarıyla silindi"
+    "memo-view": {
+      "delete-confirm": "`{{title}}` görünümünü silmek istediğinizden emin misiniz?",
+      "delete-success": "`{{title}}` görünümü başarıyla silindi"
     },
     "sso": {
       "authorization-endpoint": "Yetkilendirme uç noktası",
@@ -540,7 +540,6 @@
       "path": "Depolama Yolu",
       "path-description": "Yerel depolamadaki gibi {filename} gibi aynı dinamik değişkenleri kullanabilirsiniz",
       "path-placeholder": "özel/yol",
-      "presign-placeholder": "Ön imzalı URL, isteğe bağlı",
       "region": "Bölge",
       "region-placeholder": "Bölge adı",
       "s3-compatible-url": "S3 Uyumlu URL",

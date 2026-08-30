@@ -11,16 +11,20 @@ const feed = vi.hoisted(() => ({
   isLoading: false,
   fetchNextPage: vi.fn(async () => undefined),
 }));
-const readiness = vi.hoisted(() => ({ auth: true, instance: true }));
+const readiness = vi.hoisted(() => ({ userSettings: true }));
+const memoQuery = vi.hoisted(() => ({ request: undefined as Record<string, unknown> | undefined }));
 
 vi.mock("@/hooks/useMemoQueries", () => ({
-  useInfiniteMemos: () => ({
-    data: { pages: [{ memos: feed.memos, nextPageToken: "" }] },
-    fetchNextPage: feed.fetchNextPage,
-    hasNextPage: feed.hasNextPage,
-    isFetchingNextPage: false,
-    isLoading: feed.isLoading,
-  }),
+  useInfiniteMemos: (request: Record<string, unknown>) => {
+    memoQuery.request = request;
+    return {
+      data: { pages: [{ memos: feed.memos, nextPageToken: "" }] },
+      fetchNextPage: feed.fetchNextPage,
+      hasNextPage: feed.hasNextPage,
+      isFetchingNextPage: false,
+      isLoading: feed.isLoading,
+    };
+  },
 }));
 
 vi.mock("@/contexts/MemoFilterContext", () => ({
@@ -28,11 +32,7 @@ vi.mock("@/contexts/MemoFilterContext", () => ({
 }));
 
 vi.mock("@/contexts/AuthContext", () => ({
-  useAuth: () => ({ isInitialized: readiness.auth }),
-}));
-
-vi.mock("@/contexts/InstanceContext", () => ({
-  useInstance: () => ({ isInitialized: readiness.instance }),
+  useAuth: () => ({ isUserSettingsInitialized: readiness.userSettings }),
 }));
 
 vi.mock("@/contexts/ViewContext", () => ({
@@ -71,13 +71,13 @@ describe("<PagedMemoList>", () => {
     feed.hasNextPage = false;
     feed.isLoading = false;
     feed.fetchNextPage.mockClear();
-    readiness.auth = true;
-    readiness.instance = true;
+    readiness.userSettings = true;
+    memoQuery.request = undefined;
   });
 
-  it("does not render fetched memo content before display settings settle", () => {
+  it("keeps fetched memo content hidden until privacy settings settle", () => {
     feed.memos = [memo];
-    readiness.auth = false;
+    readiness.userSettings = false;
     const renderer = vi.fn((m: Memo) => <div key={m.name}>{m.content}</div>);
 
     renderList(renderer);
@@ -86,17 +86,42 @@ describe("<PagedMemoList>", () => {
     expect(screen.queryByText("hello")).not.toBeInTheDocument();
   });
 
-  it("does not auto-fetch more pages while display settings are pending", async () => {
+  it("renders fetched memo content once privacy settings settle", () => {
+    feed.memos = [memo];
+    const renderer = vi.fn((m: Memo) => <div key={m.name}>{m.content}</div>);
+
+    renderList(renderer);
+
+    expect(renderer).toHaveBeenCalled();
+    expect(screen.getByText("hello")).toBeInTheDocument();
+  });
+
+  it("does not auto-fetch more pages before privacy settings settle", async () => {
     vi.useFakeTimers();
     try {
       feed.memos = [memo];
       feed.hasNextPage = true;
-      readiness.auth = false;
+      readiness.userSettings = false;
 
       renderList();
       await act(async () => vi.advanceTimersByTimeAsync(1000));
 
       expect(feed.fetchNextPage).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("auto-fetches more pages once memo data is ready", async () => {
+    vi.useFakeTimers();
+    try {
+      feed.memos = [memo];
+      feed.hasNextPage = true;
+
+      renderList();
+      await act(async () => vi.advanceTimersByTimeAsync(200));
+
+      expect(feed.fetchNextPage).toHaveBeenCalledTimes(1);
     } finally {
       vi.useRealTimers();
     }
@@ -118,11 +143,31 @@ describe("<PagedMemoList>", () => {
     }
   });
 
+  it("keeps route-owned leading content visible while memos load", () => {
+    feed.isLoading = true;
+
+    renderList(undefined, { leading: <div data-testid="leading-content" /> });
+
+    expect(screen.getByTestId("leading-content")).toBeInTheDocument();
+  });
+
   it("uses the tile sprite Placeholder for the empty state", () => {
     renderList();
 
     expect(screen.getByText("No data found.")).toBeInTheDocument();
     expect(screen.getByTestId("placeholder-sprite")).toBeInTheDocument();
+  });
+
+  it("combines the selected Space filter with the memo list filter", () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <PagedMemoList renderer={() => <div />} contextFilter={'space == "spaces/product"'} filter="pinned == true" />
+      </QueryClientProvider>,
+    );
+
+    expect(memoQuery.request).toMatchObject({
+      filter: '(space == "spaces/product") && (pinned == true)',
+    });
   });
 
   it("shows the empty state below route-owned leading content", () => {

@@ -24,7 +24,6 @@
     "archive": "Archivieren",
     "archived": "Archiviert",
     "attachments": "Anhänge",
-    "auto-expand": "Automatisch erweitern",
     "avatar": "Avatar",
     "basic": "Allgemeines",
     "beta": "Beta",
@@ -66,6 +65,7 @@
     "last-updated-at": "Zuletzt aktualisiert am",
     "learn-more": "Mehr erfahren",
     "link": "Link",
+    "manage": "Verwalten",
     "map": "Karte",
     "mark": "Markieren",
     "memo": "Notiz",
@@ -96,8 +96,6 @@
     "select": "Auswählen",
     "settings": "Einstellungen",
     "share": "Teilen",
-    "shortcut-filter": "Verknüpfungsfilter",
-    "shortcuts": "Verknüpfungen",
     "sign-in": "Anmelden",
     "sign-in-with": "Anmelden mit {{provider}}",
     "sign-out": "Abmelden",
@@ -115,6 +113,7 @@
     "username": "Benutzername",
     "version": "Version",
     "visibility": "Sichtbarkeit",
+    "views": "Ansichten",
     "yourself": "Du selbst",
     "empty-placeholder": "Leer",
     "unlink": "Verknüpfung aufheben"
@@ -205,6 +204,7 @@
     "filters": {
       "has-code": "hatCode",
       "has-link": "hatLink",
+      "has-location": "hat Standort",
       "has-task-list": "hatAufgabenliste",
       "label": "Filter"
     },
@@ -455,9 +455,9 @@
       "memo-defaults-title": "Memo-Standardwerte",
       "theme-description": "Wendet das ausgewählte Thema sofort auf diesem Gerät an."
     },
-    "shortcut": {
-      "delete-confirm": "Bist du sicher, dass du die Verknüpfung `{{title}}` löschen möchtest?",
-      "delete-success": "Verknüpfung `{{title}}` erfolgreich gelöscht"
+    "memo-view": {
+      "delete-confirm": "Bist du sicher, dass du die Ansicht `{{title}}` löschen möchtest?",
+      "delete-success": "Ansicht `{{title}}` erfolgreich gelöscht"
     },
     "sso": {
       "authorization-endpoint": "Autorisierungsendpunkt",
@@ -540,7 +540,6 @@
       "path": "Speicherpfad",
       "path-description": "Du kannst dieselben dynamischen Variablen wie im lokalen Speicher verwenden, z.B. {filename}",
       "path-placeholder": "benutzerdefinierter/pfad",
-      "presign-placeholder": "Vorab signierte URL, optional",
       "region": "Region",
       "region-placeholder": "Regionsname",
       "s3-compatible-url": "S3-kompatible URL",

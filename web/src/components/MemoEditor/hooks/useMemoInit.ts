@@ -37,9 +37,12 @@ export const useMemoInit = ({
       cacheService.clear(key);
       dispatch(actions.initMemo(initialState));
     } else {
-      const cachedContent = cacheService.load(key);
-      if (cachedContent) {
-        dispatch(actions.updateContent(cachedContent));
+      const cachedDraft = cacheService.loadDraft(key);
+      if (cachedDraft.content) {
+        dispatch(actions.setContent(cachedDraft.content));
+      }
+      if (cachedDraft.attachments.length > 0) {
+        dispatch(actions.setMetadata({ attachments: cachedDraft.attachments }));
       }
       if (defaultVisibility !== undefined) {
         dispatch(actions.setMetadata({ visibility: defaultVisibility }));
@@ -49,11 +52,25 @@ export const useMemoInit = ({
       }
     }
 
-    if (autoFocus) {
-      setTimeout(() => editorRef.current?.focus(), 100);
+    const cachedCursor = cacheService.loadCursor(key);
+    let restoreCursorTimer: ReturnType<typeof setTimeout> | undefined;
+    if (autoFocus || cachedCursor !== undefined) {
+      restoreCursorTimer = setTimeout(() => {
+        if (cachedCursor !== undefined) {
+          editorRef.current?.setCursor(cachedCursor);
+        }
+        if (autoFocus) {
+          editorRef.current?.focus();
+        }
+      }, 100);
     }
 
     setIsInitialized(true);
+    return () => {
+      if (restoreCursorTimer) {
+        clearTimeout(restoreCursorTimer);
+      }
+    };
   }, [memo, cacheKey, username, autoFocus, defaultVisibility, defaultCreateTime, actions, dispatch, editorRef]);
 
   return { isInitialized };

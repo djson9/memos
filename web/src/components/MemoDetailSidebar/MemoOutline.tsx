@@ -1,16 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { SIDEBAR_ROW_BOX_CLASSES } from "@/components/AppSidebar/SidebarRow";
+import type { HeadingItem } from "@/components/MemoContent/pipeline";
 import { cn } from "@/lib/utils";
-import type { HeadingItem } from "@/utils/markdown-manipulation";
+import { findAnchorTarget, findMemoContentRoot } from "@/utils/markdown-manipulation";
 
 interface MemoOutlineProps {
   headings: HeadingItem[];
+  memoName: string;
 }
 
 /** Distance from the viewport top of the "reading line" used to decide the active section. */
 const READING_LINE_OFFSET = 100;
 
 /** Outline navigation for memo headings (h1–h4) with active-section tracking. */
-const MemoOutline = ({ headings }: MemoOutlineProps) => {
+const MemoOutline = ({ headings, memoName }: MemoOutlineProps) => {
   const [activeSlug, setActiveSlug] = useState<string | null>(null);
   const rafRef = useRef(0);
 
@@ -20,8 +23,10 @@ const MemoOutline = ({ headings }: MemoOutlineProps) => {
     const update = () => {
       rafRef.current = 0;
       let current: string | null = null;
+      const memoContent = findMemoContentRoot(document, memoName);
+      if (!memoContent) return;
       for (const heading of headings) {
-        const el = document.getElementById(heading.slug);
+        const el = findAnchorTarget(memoContent, heading.slug);
         if (!el) continue;
         if (el.getBoundingClientRect().top > READING_LINE_OFFSET) break;
         current = heading.slug;
@@ -44,11 +49,12 @@ const MemoOutline = ({ headings }: MemoOutlineProps) => {
         cancelAnimationFrame(rafRef.current);
       }
     };
-  }, [headings]);
+  }, [headings, memoName]);
 
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>, slug: string) => {
     e.preventDefault();
-    const el = document.getElementById(slug);
+    const memoContent = findMemoContentRoot(document, memoName);
+    const el = memoContent && findAnchorTarget(memoContent, slug);
     if (el) {
       setActiveSlug(slug);
       el.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -57,7 +63,7 @@ const MemoOutline = ({ headings }: MemoOutlineProps) => {
   };
 
   return (
-    <nav className="relative flex flex-col">
+    <nav className="relative flex flex-col gap-0.5">
       {headings.map((heading, index) => {
         const active = heading.slug === activeSlug;
         return (
@@ -67,19 +73,20 @@ const MemoOutline = ({ headings }: MemoOutlineProps) => {
             onClick={(e) => handleClick(e, heading.slug)}
             aria-current={active ? "location" : undefined}
             className={cn(
-              "relative block truncate rounded-md py-[3px] pr-1.5 -mx-1.5 text-[13px] leading-5 transition-colors",
+              SIDEBAR_ROW_BOX_CLASSES,
+              "relative",
               heading.level === minLevel && "font-medium",
-              active ? "text-foreground" : "text-muted-foreground/70 hover:bg-accent hover:text-foreground",
+              active ? "text-foreground" : "text-muted-foreground/70 hover:bg-sidebar-accent/65 hover:text-foreground",
             )}
-            style={{ paddingLeft: 14 + (heading.level - minLevel) * 12 }}
+            style={{ paddingInlineStart: 8 + (heading.level - minLevel) * 12 }}
           >
             <span
               className={cn(
-                "absolute left-1.5 top-1/2 h-[13px] w-[2px] -translate-y-1/2 rounded-full transition-colors",
+                "absolute start-0.5 top-1/2 h-[13px] w-[2px] -translate-y-1/2 rounded-full transition-colors",
                 active ? "bg-primary" : "bg-border",
               )}
             />
-            {heading.text}
+            <span className="min-w-0 flex-1 truncate">{heading.text}</span>
           </a>
         );
       })}

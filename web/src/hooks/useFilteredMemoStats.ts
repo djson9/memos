@@ -2,10 +2,11 @@ import { timestampDate } from "@bufbuild/protobuf/wkt";
 import dayjs from "dayjs";
 import { countBy } from "lodash-es";
 import { useMemo } from "react";
-import type { MemoExplorerContext } from "@/components/MemoExplorer";
 import { type MemoTimeBasis, useView } from "@/contexts/ViewContext";
 import useCurrentUser from "@/hooks/useCurrentUser";
 import { useAllUserStats, useUserStats } from "@/hooks/useUserQueries";
+import { combineCELFilters } from "@/lib/cel-filter";
+import { mergeTagCounts } from "@/lib/tag";
 import { State } from "@/types/proto/api/v1/common_pb";
 import type { UserStats } from "@/types/proto/api/v1/user_service_pb";
 import type { StatisticsData } from "@/types/statistics";
@@ -16,10 +17,13 @@ export interface FilteredMemoStats {
   loading: boolean;
 }
 
+export type MemoStatsContext = "home" | "explore" | "archived" | "profile";
+
 export interface UseFilteredMemoStatsOptions {
   userName?: string;
-  context?: MemoExplorerContext;
+  context?: MemoStatsContext;
   enabled?: boolean;
+  filter?: string;
 }
 
 const toDateString = (date: Date) => dayjs(date).format("YYYY-MM-DD");
@@ -36,21 +40,21 @@ const timestampsForBasis = (stats: UserStats, basis: MemoTimeBasis) => {
 };
 
 export const useFilteredMemoStats = (options: UseFilteredMemoStatsOptions = {}): FilteredMemoStats => {
-  const { userName, context, enabled = true } = options;
+  const { userName, context, enabled = true, filter } = options;
   const currentUser = useCurrentUser();
   const { timeBasis } = useView();
 
   // home/profile: use backend per-user stats (full tag set, not page-limited)
-  const { data: userStats, isLoading: isLoadingUserStats } = useUserStats(userName, { enabled });
+  const { data: userStats, isLoading: isLoadingUserStats } = useUserStats(userName, { enabled, filter });
   // explore/archived: fetch backend grouped stats and aggregate them locally.
   // ListAllUserStats AND's the request filter with the server's auth filter, so
   // private memos are not included unless explicitly visible to the current user.
-  const exploreVisibilityFilter = currentUser != null ? 'visibility in ["PUBLIC", "PROTECTED"]' : 'visibility in ["PUBLIC"]';
+  const exploreVisibilityFilter = currentUser != null ? 'visibility in ["PUBLIC", "PROTECTED", "SPACE"]' : 'visibility in ["PUBLIC"]';
   const allUserStatsRequest =
     context === "explore"
-      ? { state: State.NORMAL, filter: exploreVisibilityFilter }
+      ? { state: State.NORMAL, filter: combineCELFilters(filter, exploreVisibilityFilter) }
       : context === "archived"
-        ? { state: State.ARCHIVED }
+        ? { state: State.ARCHIVED, filter }
         : {};
   const shouldFetchAllUserStats = context === "explore" || (context === "archived" && !!currentUser?.name);
   const { data: allUserStats = [], isLoading: isLoadingAllUserStats } = useAllUserStats(allUserStatsRequest, {
@@ -60,14 +64,12 @@ export const useFilteredMemoStats = (options: UseFilteredMemoStatsOptions = {}):
   const data = useMemo(() => {
     const loading = isLoadingUserStats || isLoadingAllUserStats;
     let activityStats: Record<string, number> = {};
-    let tagCount: Record<string, number> = {};
+    let tagCount: Record<string, number> = mergeTagCounts();
 
     if (context === "explore" || context === "archived") {
       const displayDates: string[] = [];
+      tagCount = mergeTagCounts(...allUserStats.map((stats) => stats.tagCount));
       for (const stats of allUserStats) {
-        for (const [tag, count] of Object.entries(stats.tagCount ?? {})) {
-          tagCount[tag] = (tagCount[tag] ?? 0) + count;
-        }
         displayDates.push(
           ...timestampsForBasis(stats, timeBasis)
             .map((ts) => (ts ? timestampDate(ts) : undefined))
@@ -88,7 +90,7 @@ export const useFilteredMemoStats = (options: UseFilteredMemoStatsOptions = {}):
         );
       }
       if (userStats.tagCount) {
-        tagCount = userStats.tagCount;
+        tagCount = mergeTagCounts(userStats.tagCount);
       }
     }
 

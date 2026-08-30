@@ -1,11 +1,22 @@
+import type { CSSProperties } from "react";
 import { useEffect, useRef } from "react";
 import { Navigate, Outlet, useLocation, useSearchParams } from "react-router-dom";
-import Navigation from "@/components/Navigation";
+import AppSidebar, {
+  MobileAppHeader,
+  MobileAppSidebar,
+  QuickFindDialog,
+  SIDEBAR_WIDTH_VAR,
+  SidebarResizeHandle,
+  useSidebarWidth,
+} from "@/components/AppSidebar";
+import { AppSidebarProvider } from "@/contexts/AppSidebarContext";
+import { GlobalMemoEditorProvider } from "@/contexts/GlobalMemoEditorContext";
 import { useInstance } from "@/contexts/InstanceContext";
-import { useMemoFilterContext } from "@/contexts/MemoFilterContext";
+import { MemoFilterProvider, useMemoFilterContext } from "@/contexts/MemoFilterContext";
+import { SpaceProvider } from "@/contexts/SpaceContext";
 import useCurrentUser from "@/hooks/useCurrentUser";
 import useMediaQuery from "@/hooks/useMediaQuery";
-import { cn } from "@/lib/utils";
+import { InstanceAccessMode } from "@/types/proto/api/v1/instance_service_pb";
 import { buildAuthRoute, shouldGatePrivateInstance } from "@/utils/auth-redirect";
 import { useTranslate } from "@/utils/i18n";
 
@@ -27,15 +38,17 @@ const DemoBanner = () => {
   );
 };
 
-const RootLayout = () => {
+const RootLayoutContent = () => {
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const sm = useMediaQuery("sm");
   const currentUser = useCurrentUser();
+  const md = useMediaQuery("md");
   const { profile } = useInstance();
   const { removeFilter } = useMemoFilterContext();
   const { pathname } = location;
   const prevPathnameRef = useRef<string | undefined>(undefined);
+  const shellRef = useRef<HTMLDivElement>(null);
+  const { width: sidebarWidth, minWidth, maxWidth, setWidth: setSidebarWidth } = useSidebarWidth();
 
   useEffect(() => {
     const prevPathname = prevPathnameRef.current;
@@ -48,33 +61,54 @@ const RootLayout = () => {
     prevPathnameRef.current = pathname;
   }, [pathname, searchParams, removeFilter]);
 
-  // Private instance (no InstanceURL configured): anonymous visitors may only reach
-  // share links; everything else redirects to the sign-in page, preserving the intended
-  // destination. Public instances keep the open Explore behavior for logged-out users.
-  if (shouldGatePrivateInstance({ isPrivateInstance: !profile.instanceUrl, isAuthenticated: !!currentUser, pathname })) {
+  // Anonymous visitors to private instances may only reach share links. Treat an
+  // unspecified mode as private so a partial or older response cannot expose content.
+  if (
+    shouldGatePrivateInstance({
+      isPrivateInstance: profile.accessMode !== InstanceAccessMode.PUBLIC,
+      isAuthenticated: !!currentUser,
+      pathname,
+    })
+  ) {
     const redirect = `${pathname}${location.search}${location.hash}`;
     return <Navigate to={buildAuthRoute({ redirect })} replace />;
   }
 
   return (
-    <div className="w-full min-h-full flex flex-row justify-center items-start sm:pl-16">
-      {sm && (
-        <div
-          className={cn(
-            "group flex flex-col justify-start items-start fixed top-0 left-0 select-none h-full bg-sidebar",
-            "w-16 px-2",
-            "border-r border-border",
-          )}
-        >
-          <Navigation className="py-4 md:pt-6" collapsed={true} />
+    <div ref={shellRef} className="min-h-full w-full bg-background" style={{ [SIDEBAR_WIDTH_VAR]: `${sidebarWidth}px` } as CSSProperties}>
+      {md && (
+        <div className="fixed inset-y-0 start-0 z-30 w-(--app-sidebar-width) border-e border-border/70">
+          <AppSidebar />
+          <SidebarResizeHandle
+            width={sidebarWidth}
+            minWidth={minWidth}
+            maxWidth={maxWidth}
+            onWidthChange={setSidebarWidth}
+            targetRef={shellRef}
+          />
         </div>
       )}
-      <main className="w-full h-auto grow shrink flex flex-col justify-start items-center">
+      <MobileAppSidebar />
+      <main className="flex min-h-full w-full min-w-0 flex-col items-center md:ps-(--app-sidebar-width)">
+        <MobileAppHeader />
         {profile.demo && <DemoBanner />}
         <Outlet />
       </main>
+      <QuickFindDialog />
     </div>
   );
 };
+
+const RootLayout = () => (
+  <SpaceProvider>
+    <MemoFilterProvider>
+      <AppSidebarProvider>
+        <GlobalMemoEditorProvider>
+          <RootLayoutContent />
+        </GlobalMemoEditorProvider>
+      </AppSidebarProvider>
+    </MemoFilterProvider>
+  </SpaceProvider>
+);
 
 export default RootLayout;

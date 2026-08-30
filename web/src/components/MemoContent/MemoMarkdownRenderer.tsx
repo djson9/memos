@@ -2,20 +2,13 @@ import type { Element } from "hast";
 import { type ComponentProps, memo, type ReactNode, Suspense } from "react";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
-import rehypeRaw from "rehype-raw";
-import rehypeSanitize from "rehype-sanitize";
-import remarkBreaks from "remark-breaks";
-import remarkGfm from "remark-gfm";
+import { buildRehypePlugins, buildRemarkPlugins } from "@/components/MemoContent/pipeline";
 import { isMentionElement, isTagElement, isTaskListItemElement } from "@/types/markdown";
+import type { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
 import { lazyWithReload } from "@/utils/lazy";
-import { rehypeHeadingId } from "@/utils/rehype-plugins/rehype-heading-id";
-import { remarkDisableSetext } from "@/utils/remark-plugins/remark-disable-setext";
-import { remarkMention } from "@/utils/remark-plugins/remark-mention";
-import { remarkPreserveType } from "@/utils/remark-plugins/remark-preserve-type";
-import { remarkSplitMixedTaskLists } from "@/utils/remark-plugins/remark-split-mixed-task-lists";
-import { remarkTag } from "@/utils/remark-plugins/remark-tag";
+import { resolveManagedAttachmentImageSource } from "@/utils/managed-attachment";
+import type { MemoOriginScope } from "../MemoView/navigation";
 import { CodeBlock } from "./CodeBlock";
-import { SANITIZE_SCHEMA } from "./constants";
 import { MarkdownRenderContext, rootMarkdownRenderContext } from "./MarkdownRenderContext";
 import { Mention } from "./Mention";
 import { AnchorLink, Blockquote, Heading, HorizontalRule, Image, InlineCode, Link, List, ListItem, Paragraph } from "./markdown";
@@ -27,9 +20,13 @@ import { TrustedIframe } from "./TrustedIframe";
 
 export interface MemoMarkdownRendererProps {
   content: string;
+  attachments?: Attachment[];
   resolvedMentionUsernames: Set<string>;
   /** Resource name of the memo (e.g. `memos/abc123`), used to target footnote links at the detail page. */
   memoName?: string;
+  /** Collection page that opened the memo detail. */
+  parentPage?: string;
+  parentScope?: MemoOriginScope;
   /** Whether the memo is rendered as a collapsed feed card. */
   compact?: boolean;
 }
@@ -58,7 +55,7 @@ function getMentionUsername(node: Element, children?: ReactNode): string {
 
   const text = Array.isArray(children) ? children.join("") : children;
   if (typeof text === "string" && text.startsWith("@")) {
-    return text.slice(1).toLowerCase();
+    return text.slice(1);
   }
 
   return "";
@@ -66,8 +63,11 @@ function getMentionUsername(node: Element, children?: ReactNode): string {
 
 export const MemoMarkdownRendererCore = ({
   content,
+  attachments = [],
   resolvedMentionUsernames,
   memoName,
+  parentPage,
+  parentScope,
   compact,
   mathRemarkPlugins = [],
   mathRehypePlugins = [],
@@ -134,7 +134,7 @@ export const MemoMarkdownRendererCore = ({
       // than opening a new tab; everything else is treated as an external link.
       if (typeof href === "string" && href.startsWith("#")) {
         return (
-          <AnchorLink href={href} memoName={memoName} compact={compact} {...props}>
+          <AnchorLink href={href} memoName={memoName} parentPage={parentPage} parentScope={parentScope} compact={compact} {...props}>
             {children}
           </AnchorLink>
         );
@@ -147,7 +147,7 @@ export const MemoMarkdownRendererCore = ({
     },
     code: ({ children, ...props }) => <InlineCode {...props}>{children}</InlineCode>,
     iframe: TrustedIframe,
-    img: (props) => <Image {...props} />,
+    img: ({ src, ...props }) => <Image {...props} src={resolveManagedAttachmentImageSource(src, attachments)} />,
     pre: CodeBlock,
     table: ({ children, ...props }) => <Table {...props}>{children}</Table>,
     thead: ({ children, ...props }) => <TableHead {...props}>{children}</TableHead>,
@@ -160,17 +160,8 @@ export const MemoMarkdownRendererCore = ({
   return (
     <MarkdownRenderContext.Provider value={rootMarkdownRenderContext}>
       <ReactMarkdown
-        remarkPlugins={[
-          remarkDisableSetext,
-          ...mathRemarkPlugins,
-          remarkGfm,
-          remarkSplitMixedTaskLists,
-          remarkBreaks,
-          remarkMention,
-          remarkTag,
-          remarkPreserveType,
-        ]}
-        rehypePlugins={[rehypeRaw, [rehypeSanitize, SANITIZE_SCHEMA], rehypeHeadingId, ...mathRehypePlugins]}
+        remarkPlugins={buildRemarkPlugins(mathRemarkPlugins)}
+        rehypePlugins={buildRehypePlugins(mathRehypePlugins)}
         components={markdownComponents}
       >
         {content}
@@ -201,7 +192,10 @@ export const MemoMarkdownRenderer = memo(
   MemoMarkdownRendererComponent,
   (previous, next) =>
     previous.content === next.content &&
+    previous.attachments === next.attachments &&
     previous.memoName === next.memoName &&
+    previous.parentPage === next.parentPage &&
+    previous.parentScope === next.parentScope &&
     previous.compact === next.compact &&
     haveEqualResolvedMentions(previous.resolvedMentionUsernames, next.resolvedMentionUsernames),
 );

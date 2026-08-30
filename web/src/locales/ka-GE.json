@@ -24,7 +24,6 @@
     "archive": "არქივი",
     "archived": "დაარქივებული",
     "attachments": "დანართები",
-    "auto-expand": "ავტომატური გაფართოება",
     "avatar": "ავატარი",
     "basic": "ძირითადი",
     "beta": "ბეტა",
@@ -66,6 +65,7 @@
     "last-updated-at": "ბოლო განახლება",
     "learn-more": "გაიგეთ მეტი",
     "link": "ლინკი",
+    "manage": "მართვა",
     "map": "რუკა",
     "mark": "მონიშვნა",
     "memo": "მემო",
@@ -96,8 +96,6 @@
     "select": "არჩევა",
     "settings": "პარამეტრები",
     "share": "გაზიარება",
-    "shortcut-filter": "მოკლე გზების ფილტრი",
-    "shortcuts": "მოკლე გზები",
     "sign-in": "შესვლა",
     "sign-in-with": "შედით {{provider}}-ით",
     "sign-out": "გამოსვლა",
@@ -115,6 +113,7 @@
     "username": "მომხმარებლის სახელი",
     "version": "ვერსია",
     "visibility": "ხილვადობა",
+    "views": "ხედები",
     "yourself": "თქვენ",
     "empty-placeholder": "ცარიელი",
     "unlink": "გაუქმება"
@@ -205,6 +204,7 @@
     "filters": {
       "has-code": "კოდიარის",
       "has-link": "ლინკიარის",
+      "has-location": "აქვს მდებარეობა",
       "has-task-list": "სიისამოცანებია",
       "label": "ფილტრები"
     },
@@ -455,9 +455,9 @@
       "memo-defaults-title": "Memo ნაგულისხმევი",
       "theme-description": "არჩეულ თემას დაუყოვნებლივ იყენებს ამ მოწყობილობაზე."
     },
-    "shortcut": {
-      "delete-confirm": "დარწმუნებული ხართ, რომ გინდათ მოკლე გზის `{{title}}` წაშლა?",
-      "delete-success": "მოკლე გზა `{{title}}` წარმატებით წაიშალა"
+    "memo-view": {
+      "delete-confirm": "დარწმუნებული ხართ, რომ გინდათ ხედის `{{title}}` წაშლა?",
+      "delete-success": "ხედი `{{title}}` წარმატებით წაიშალა"
     },
     "sso": {
       "authorization-endpoint": "ავტორიზაციის წერტილი",
@@ -540,7 +540,6 @@
       "path": "შენახვის გზა",
       "path-description": "შეგიძლიათ გამოიყენოთ იგივე დინამიური ცვლადები, როგორც ლოკალური შენახვისთვის, როგორიცაა {filename}",
       "path-placeholder": "მორგებული/გზა",
-      "presign-placeholder": "წინასწარი ხელმოწერის URL, არასავალდებულო",
       "region": "რეგიონი",
       "region-placeholder": "რეგიონის სახელი",
       "s3-compatible-url": "S3 თავსებადი URL",

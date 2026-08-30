@@ -7,6 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 
 	storepb "github.com/usememos/memos/proto/gen/store"
 )
@@ -36,6 +37,7 @@ func (s *Store) UpsertInstanceSetting(ctx context.Context, upsert *storepb.Insta
 	} else if upsert.Key == storepb.InstanceSettingKey_GENERAL {
 		valueBytes, err = protojson.Marshal(upsert.GetGeneralSetting())
 	} else if upsert.Key == storepb.InstanceSettingKey_STORAGE {
+		NormalizeInstanceStorageSetting(upsert.GetStorageSetting())
 		valueBytes, err = protojson.Marshal(upsert.GetStorageSetting())
 	} else if upsert.Key == storepb.InstanceSettingKey_MEMO_RELATED {
 		valueBytes, err = protojson.Marshal(upsert.GetMemoRelatedSetting())
@@ -45,6 +47,8 @@ func (s *Store) UpsertInstanceSetting(ctx context.Context, upsert *storepb.Insta
 		valueBytes, err = protojson.Marshal(upsert.GetNotificationSetting())
 	} else if upsert.Key == storepb.InstanceSettingKey_AI {
 		valueBytes, err = protojson.Marshal(upsert.GetAiSetting())
+	} else if upsert.Key == storepb.InstanceSettingKey_ACCESS {
+		valueBytes, err = protojson.Marshal(upsert.GetAccessSetting())
 	} else {
 		return nil, errors.Errorf("unsupported instance setting key: %v", upsert.Key)
 	}
@@ -62,7 +66,24 @@ func (s *Store) UpsertInstanceSetting(ctx context.Context, upsert *storepb.Insta
 		return nil, errors.Wrap(err, "Failed to convert instance setting")
 	}
 	s.cacheInstanceSetting(ctx, instanceSetting)
+	if upsert.Key == storepb.InstanceSettingKey_STORAGE {
+		s.resetStorageDriverCache()
+	}
 	return instanceSetting, nil
+}
+
+// DeleteInstanceSetting deletes a database-backed instance setting and clears
+// cached state derived from it.
+func (s *Store) DeleteInstanceSetting(ctx context.Context, delete *DeleteInstanceSetting) error {
+	if err := s.driver.DeleteInstanceSetting(ctx, delete); err != nil {
+		return errors.Wrap(err, "failed to delete instance setting")
+	}
+
+	s.instanceSettingCache.Delete(ctx, delete.Name)
+	if delete.Name == storepb.InstanceSettingKey_STORAGE.String() {
+		s.resetStorageDriverCache()
+	}
+	return nil
 }
 
 func (s *Store) ListInstanceSettings(ctx context.Context, find *FindInstanceSetting) ([]*storepb.InstanceSetting, error) {
@@ -208,6 +229,38 @@ func (s *Store) GetInstanceGeneralSetting(ctx context.Context) (*storepb.Instanc
 	return instanceGeneralSetting, nil
 }
 
+// GetInstanceAccessSetting gets the instance access policy, defaulting to private.
+func (s *Store) GetInstanceAccessSetting(ctx context.Context) (*storepb.InstanceAccessSetting, error) {
+	instanceSetting := s.getDeploymentInstanceSetting(storepb.InstanceSettingKey_ACCESS)
+	if instanceSetting == nil {
+		var err error
+		// Access policy changes must take effect across replicas without waiting for
+		// the general instance-setting cache to expire.
+		instanceSetting, err = s.getRawInstanceSetting(ctx, storepb.InstanceSettingKey_ACCESS.String())
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to get instance access setting")
+		}
+	}
+
+	instanceAccessSetting := &storepb.InstanceAccessSetting{}
+	if instanceSetting != nil && instanceSetting.GetAccessSetting() != nil {
+		instanceAccessSetting = instanceSetting.GetAccessSetting()
+	}
+	if instanceAccessSetting.AccessMode == storepb.InstanceAccessMode_INSTANCE_ACCESS_MODE_UNSPECIFIED {
+		instanceAccessSetting.AccessMode = storepb.InstanceAccessMode_INSTANCE_ACCESS_MODE_PRIVATE
+	}
+	return instanceAccessSetting, nil
+}
+
+// AllowsAnonymousAccess reports whether the effective instance access policy is public.
+func (s *Store) AllowsAnonymousAccess(ctx context.Context) (bool, error) {
+	setting, err := s.GetInstanceAccessSetting(ctx)
+	if err != nil {
+		return false, err
+	}
+	return setting.AccessMode == storepb.InstanceAccessMode_INSTANCE_ACCESS_MODE_PUBLIC, nil
+}
+
 // DefaultContentLengthLimit is the default limit of content length in bytes. 8KB.
 const DefaultContentLengthLimit = 8 * 1024
 
@@ -317,10 +370,12 @@ func (s *Store) GetInstanceStorageSetting(ctx context.Context) (*storepb.Instanc
 		return nil, errors.Wrap(err, "failed to get instance storage setting")
 	}
 
+	stored := instanceSetting.GetStorageSetting()
 	instanceStorageSetting := &storepb.InstanceStorageSetting{}
-	if instanceSetting != nil {
-		instanceStorageSetting = instanceSetting.GetStorageSetting()
+	if stored != nil {
+		instanceStorageSetting = proto.CloneOf(stored)
 	}
+	NormalizeInstanceStorageSetting(instanceStorageSetting)
 	if instanceStorageSetting.StorageType == storepb.InstanceStorageSetting_STORAGE_TYPE_UNSPECIFIED {
 		instanceStorageSetting.StorageType = defaultInstanceStorageType
 	}
@@ -330,10 +385,16 @@ func (s *Store) GetInstanceStorageSetting(ctx context.Context) (*storepb.Instanc
 	if instanceStorageSetting.FilepathTemplate == "" {
 		instanceStorageSetting.FilepathTemplate = defaultInstanceFilepathTemplate
 	}
-	s.cacheInstanceSetting(ctx, &storepb.InstanceSetting{
-		Key:   storepb.InstanceSettingKey_STORAGE,
-		Value: &storepb.InstanceSetting_StorageSetting{StorageSetting: instanceStorageSetting},
-	})
+	// Only write back when normalization changed the cached value; on the common
+	// path the cache already holds the normalized setting.
+	if !proto.Equal(stored, instanceStorageSetting) {
+		s.cacheInstanceSetting(ctx, &storepb.InstanceSetting{
+			Key: storepb.InstanceSettingKey_STORAGE,
+			Value: &storepb.InstanceSetting_StorageSetting{
+				StorageSetting: proto.CloneOf(instanceStorageSetting),
+			},
+		})
+	}
 	return instanceStorageSetting, nil
 }
 
@@ -384,6 +445,12 @@ func convertInstanceSettingFromRaw(instanceSettingRaw *InstanceSetting) (*storep
 			return nil, err
 		}
 		instanceSetting.Value = &storepb.InstanceSetting_AiSetting{AiSetting: aiSetting}
+	case storepb.InstanceSettingKey_ACCESS.String():
+		accessSetting := &storepb.InstanceAccessSetting{}
+		if err := protojsonUnmarshaler.Unmarshal([]byte(instanceSettingRaw.Value), accessSetting); err != nil {
+			return nil, err
+		}
+		instanceSetting.Value = &storepb.InstanceSetting_AccessSetting{AccessSetting: accessSetting}
 	default:
 		// Skip unsupported instance setting key.
 		return nil, nil

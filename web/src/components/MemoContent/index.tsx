@@ -9,13 +9,14 @@ import type { MemoContentProps } from "./types";
 // the renderer (e.g. footnote links navigate to the detail page instead of scrolling,
 // since a collapsed card may hide the target).
 const MemoContent = (props: MemoContentProps) => {
-  const { className, contentClassName, content, onClick, onDoubleClick } = props;
+  const { className, contentClassName, content, attachments, onClick, onDoubleClick } = props;
   const resolvedMentionUsernames = useResolvedMentionUsernames(content);
 
   return (
     <div className={`w-full flex flex-col justify-start items-start text-foreground ${className || ""}`}>
       <div
         data-memo-content
+        data-memo-name={props.memoName}
         className={cn(
           "relative w-full max-w-full wrap-break-word text-base leading-6",
           "[&>*:last-child]:mb-0",
@@ -35,8 +36,11 @@ const MemoContent = (props: MemoContentProps) => {
       >
         <MemoMarkdownRenderer
           content={content}
+          attachments={attachments}
           resolvedMentionUsernames={resolvedMentionUsernames}
           memoName={props.memoName}
+          parentPage={props.parentPage}
+          parentScope={props.parentScope}
           compact={Boolean(props.compact)}
         />
       </div>

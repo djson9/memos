@@ -312,7 +312,7 @@ message CreateUserRequest {
   ];
 
   // Optional. The resource ID to use for this user. If set, it must equal
-  // user.username, follow the UID format, and not consist entirely of digits.
+  // user.username and follow the username format.
   // Format: ^[a-zA-Z0-9]([a-zA-Z0-9-]{0,34}[a-zA-Z0-9])?$
   string user_id = 2 [(google.api.field_behavior) = OPTIONAL];
 
@@ -399,6 +399,13 @@ message GetUserStatsRequest {
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {type: "memos.api.v1/User"}
   ];
+
+  // Optional. CEL expression selecting the readable non-comment memos to
+  // include. Supports the same fields as ListMemos, including `space`.
+  string filter = 2 [(google.api.field_behavior) = OPTIONAL];
+
+  reserved 3;
+  reserved "space", "unassigned";
 }
 
 message ListAllUserStatsRequest {
@@ -408,6 +415,9 @@ message ListAllUserStatsRequest {
   // Optional. Filter to apply to memo stats.
   // Uses the same filter syntax as ListMemos.
   string filter = 2 [(google.api.field_behavior) = OPTIONAL];
+
+  reserved 3, 4;
+  reserved "space", "unassigned";
 }
 
 message ListAllUserStatsResponse {
@@ -456,6 +466,8 @@ message UserSetting {
     // This references a CSS file in the web/public/themes/ directory.
     // If not set, the default theme will be used.
     string theme = 4 [(google.api.field_behavior) = OPTIONAL];
+    // Whether the official client should save metadata from future media uploads.
+    bool save_media_metadata = 5 [(google.api.field_behavior) = OPTIONAL];
   }
 
   // Tag metadata for user-specific display rules.

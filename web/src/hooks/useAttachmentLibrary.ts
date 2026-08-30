@@ -1,6 +1,6 @@
 import { timestampDate } from "@bufbuild/protobuf/wkt";
 import dayjs from "dayjs";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import {
   getAttachmentMetadata,
   isAudioAttachment,
@@ -8,10 +8,11 @@ import {
   isVideoAttachment,
 } from "@/components/MemoMetadata/Attachment/attachmentHelpers";
 import { useInfiniteAttachments } from "@/hooks/useAttachmentQueries";
-import type { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
+import { combineCELFilters } from "@/lib/cel-filter";
+import type { Attachment, ListAttachmentsRequest } from "@/types/proto/api/v1/attachment_service_pb";
 import { isMotionAttachment } from "@/utils/attachment";
 import { useTranslate } from "@/utils/i18n";
-import { type AttachmentVisualItem, buildAttachmentVisualItems } from "@/utils/media-item";
+import { type AttachmentVisualItem, buildAttachmentVisualItems, countLogicalAttachmentItems } from "@/utils/media-item";
 
 export type AttachmentLibraryTab = "media" | "documents" | "audio";
 
@@ -37,6 +38,7 @@ export interface AttachmentLibraryMediaItem extends AttachmentVisualItem {
   createdAt?: Date;
   createdLabel: string;
   fileTypeLabel: string;
+  memoName?: string;
 }
 
 export interface AttachmentLibraryMonthGroup {
@@ -46,6 +48,34 @@ export interface AttachmentLibraryMonthGroup {
 }
 
 const PAGE_SIZE = 50;
+const ATTACHMENT_LIBRARY_REQUEST = {
+  pageSize: PAGE_SIZE,
+  orderBy: "create_time desc",
+};
+const COMPLETE_ATTACHMENT_LIBRARY_REQUEST = {
+  pageSize: 1000,
+  orderBy: "create_time desc",
+};
+const UNUSED_ATTACHMENT_LIBRARY_REQUEST = {
+  filter: "memo_id == null",
+  pageSize: 1000,
+  orderBy: "create_time desc",
+};
+
+const useCompleteAttachments = (request: Partial<ListAttachmentsRequest>, enabled = true) => {
+  const query = useInfiniteAttachments(request, { enabled });
+
+  useEffect(() => {
+    if (enabled && query.isSuccess && query.hasNextPage && !query.isFetchingNextPage) {
+      void query.fetchNextPage();
+    }
+  }, [enabled, query.fetchNextPage, query.hasNextPage, query.isFetchingNextPage, query.isSuccess]);
+
+  return {
+    ...query,
+    isComplete: enabled && query.isSuccess && !query.hasNextPage && !query.isFetchingNextPage,
+  };
+};
 
 const sortByNewest = (a?: Date, b?: Date) => (b?.getTime() ?? 0) - (a?.getTime() ?? 0);
 
@@ -53,6 +83,18 @@ const isLinkedAttachment = (attachment: Attachment) => Boolean(attachment.memo);
 
 const isVisualAttachment = (attachment: Attachment) =>
   isImageAttachment(attachment) || isVideoAttachment(attachment) || isMotionAttachment(attachment);
+
+export const buildAttachmentLibraryStats = (attachments: Attachment[]): AttachmentLibraryStats => {
+  const linkedAttachments = attachments.filter(isLinkedAttachment);
+  const visualAttachments = linkedAttachments.filter(isVisualAttachment);
+
+  return {
+    unused: attachments.length - linkedAttachments.length,
+    media: countLogicalAttachmentItems(visualAttachments),
+    documents: linkedAttachments.filter((attachment) => !isVisualAttachment(attachment) && !isAudioAttachment(attachment)).length,
+    audio: linkedAttachments.filter(isAudioAttachment).length,
+  };
+};
 
 const toCreatedAt = (attachment: Attachment): Date | undefined => {
   return attachment.createTime ? timestampDate(attachment.createTime) : undefined;
@@ -96,6 +138,7 @@ const toLibraryMediaItem = (item: AttachmentVisualItem, locale: string, livePhot
     createdAt,
     createdLabel: formatCreatedAt(createdAt, locale),
     fileTypeLabel: item.kind === "motion" ? livePhotoLabel : fileTypeLabel,
+    memoName: primaryAttachment.memo,
   };
 };
 
@@ -128,12 +171,9 @@ const groupMediaByMonth = (
     }));
 };
 
-export function useAttachmentLibrary(locale: string) {
+export function useAttachmentLibrary(locale: string, filter?: string) {
   const t = useTranslate();
-  const query = useInfiniteAttachments({
-    pageSize: PAGE_SIZE,
-    orderBy: "create_time desc",
-  });
+  const query = useInfiniteAttachments({ ...ATTACHMENT_LIBRARY_REQUEST, filter });
 
   const attachments = useMemo(() => (query.data?.pages ?? []).flatMap((page) => page.attachments), [query.data?.pages]);
 
@@ -199,5 +239,30 @@ export function useAttachmentLibrary(locale: string) {
     audioItems,
     unusedItems,
     stats,
+  };
+}
+
+export function useAttachmentLibraryStats(filter?: string) {
+  const query = useCompleteAttachments({ ...COMPLETE_ATTACHMENT_LIBRARY_REQUEST, filter });
+  const attachments = useMemo(() => (query.data?.pages ?? []).flatMap((page) => page.attachments), [query.data?.pages]);
+  const stats = useMemo(() => buildAttachmentLibraryStats(attachments), [attachments]);
+
+  return { ...query, stats };
+}
+
+export function useUnusedAttachmentLibrary(locale: string, filter?: string, enabled = true) {
+  const query = useCompleteAttachments(
+    { ...UNUSED_ATTACHMENT_LIBRARY_REQUEST, filter: combineCELFilters(UNUSED_ATTACHMENT_LIBRARY_REQUEST.filter, filter) },
+    enabled,
+  );
+  const attachments = useMemo(() => (query.data?.pages ?? []).flatMap((page) => page.attachments), [query.data?.pages]);
+  const unusedItems = useMemo(
+    () => attachments.map((attachment) => toLibraryListItem(attachment, locale)).sort((a, b) => sortByNewest(a.createdAt, b.createdAt)),
+    [attachments, locale],
+  );
+
+  return {
+    ...query,
+    unusedItems,
   };
 }

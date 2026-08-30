@@ -24,7 +24,6 @@
     "archive": "Arxivar",
     "archived": "Arxivat",
     "attachments": "Adjunts",
-    "auto-expand": "Expansió automàtica",
     "avatar": "Avatar",
     "basic": "Bàsic",
     "beta": "Beta",
@@ -66,6 +65,7 @@
     "last-updated-at": "Darrera actualització el",
     "learn-more": "Saber-ne més",
     "link": "Enllaç",
+    "manage": "Gestiona",
     "map": "Mapa",
     "mark": "Marca",
     "memo": "Memo",
@@ -96,8 +96,6 @@
     "select": "Selecciona",
     "settings": "Configuració",
     "share": "Comparteix",
-    "shortcut-filter": "Filtre de dreceres",
-    "shortcuts": "Dreceres",
     "sign-in": "Identifica't",
     "sign-in-with": "Identifica't via {{provider}}",
     "sign-out": "Surt",
@@ -115,6 +113,7 @@
     "username": "Nom d'usuari",
     "version": "Versió",
     "visibility": "Visibilitat",
+    "views": "Vistes",
     "yourself": "Tu mateix",
     "empty-placeholder": "Buit",
     "unlink": "Desenllaça"
@@ -205,6 +204,7 @@
     "filters": {
       "has-code": "téCodi",
       "has-link": "téEnllaç",
+      "has-location": "té ubicació",
       "has-task-list": "téLlistaTasques",
       "label": "Filtres"
     },
@@ -455,9 +455,9 @@
       "memo-defaults-title": "Memo per defecte",
       "theme-description": "Aplica el tema seleccionat immediatament en aquest dispositiu."
     },
-    "shortcut": {
-      "delete-confirm": "Estàs segur que vols eliminar la drecera `{{title}}`?",
-      "delete-success": "Drecera `{{title}}` eliminada correctament"
+    "memo-view": {
+      "delete-confirm": "Estàs segur que vols eliminar la vista `{{title}}`?",
+      "delete-success": "Vista `{{title}}` eliminada correctament"
     },
     "sso": {
       "authorization-endpoint": "Punt final d'autorització",
@@ -540,7 +540,6 @@
       "path": "Ruta d'emmagatzematge",
       "path-description": "Pots utilitzar les mateixes variables dinàmiques que a l'emmagatzematge local, com {filename}",
       "path-placeholder": "ruta/personalitzada",
-      "presign-placeholder": "URL pre-signada, opcional",
       "region": "Regió",
       "region-placeholder": "Nom de la regió",
       "s3-compatible-url": "URL compatible amb S3",

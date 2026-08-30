@@ -3,7 +3,6 @@ import { attachmentServiceClient } from "@/connect";
 import type { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
 import { AttachmentSchema, MotionMediaSchema } from "@/types/proto/api/v1/attachment_service_pb";
 import { subscribeAttachmentProgress } from "@/utils/attachmentProgress";
-import { generateUUID } from "@/utils/uuid";
 import type { LocalFile, UploadProgress, UploadProgressStage } from "../types/attachment";
 
 type UploadProgressCallback = (progress: UploadProgress) => void;
@@ -29,14 +28,31 @@ function reportProgress(
 }
 
 export const uploadService = {
+  async uploadFile(localFile: LocalFile, attachmentId?: string): Promise<Attachment> {
+    const { file, motionMedia } = localFile;
+    const [mediaMetadata, arrayBuffer] = await Promise.all([localFile.mediaMetadata, file.arrayBuffer()]);
+    const buffer = new Uint8Array(arrayBuffer);
+    return attachmentServiceClient.createAttachment({
+      attachment: create(AttachmentSchema, {
+        filename: file.name,
+        size: BigInt(file.size),
+        type: file.type,
+        content: buffer,
+        motionMedia: motionMedia ? create(MotionMediaSchema, motionMedia) : undefined,
+        mediaMetadata,
+      }),
+      attachmentId,
+    });
+  },
+
   async uploadFiles(localFiles: LocalFile[], onProgress?: UploadProgressCallback): Promise<Attachment[]> {
     if (localFiles.length === 0) return [];
 
     const attachments: Attachment[] = [];
 
     for (const [fileIndex, localFile] of localFiles.entries()) {
-      const { file, motionMedia } = localFile;
-      const attachmentId = generateUUID();
+      const { file } = localFile;
+      const attachmentId = crypto.randomUUID();
       const attachmentName = `attachments/${attachmentId}`;
       reportProgress(onProgress, file.name, "preparing", 0, fileIndex, localFiles.length);
       const unsubscribe = subscribeAttachmentProgress(attachmentName, (event) => {
@@ -50,19 +66,9 @@ export const uploadService = {
         );
       });
 
-      const buffer = new Uint8Array(await file.arrayBuffer());
       reportProgress(onProgress, file.name, "uploading", 5, fileIndex, localFiles.length);
       try {
-        const attachment = await attachmentServiceClient.createAttachment({
-          attachment: create(AttachmentSchema, {
-            filename: file.name,
-            size: BigInt(file.size),
-            type: file.type,
-            content: buffer,
-            motionMedia: motionMedia ? create(MotionMediaSchema, motionMedia) : undefined,
-          }),
-          attachmentId,
-        });
+        const attachment = await uploadService.uploadFile(localFile, attachmentId);
         attachments.push(attachment);
         reportProgress(onProgress, attachment.filename, "complete", 100, fileIndex, localFiles.length);
       } finally {

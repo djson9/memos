@@ -1,12 +1,12 @@
 import { create } from "@bufbuild/protobuf";
 import { useMemo } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUpdateUserGeneralSetting } from "@/hooks/useUserQueries";
-import { Visibility } from "@/types/proto/api/v1/memo_service_pb";
 import { UserSetting_GeneralSetting, UserSetting_GeneralSettingSchema } from "@/types/proto/api/v1/user_service_pb";
 import { loadLocale, useTranslate } from "@/utils/i18n";
-import { convertVisibilityFromString, convertVisibilityToString } from "@/utils/memo";
+import { convertVisibilityFromString, DEFAULT_VISIBILITY_OPTIONS } from "@/utils/memo";
 import { loadTheme } from "@/utils/theme";
 import LocaleSelect from "../LocaleSelect";
 import ThemeSelect from "../ThemeSelect";
@@ -18,7 +18,7 @@ import SettingSection from "./SettingSection";
 const PreferencesSection = () => {
   const t = useTranslate();
   const { currentUser, userGeneralSetting: generalSetting, refetchSettings } = useAuth();
-  const { mutate: updateUserGeneralSetting } = useUpdateUserGeneralSetting(currentUser?.name);
+  const { mutate: updateUserGeneralSetting, isPending: isUpdatingGeneralSetting } = useUpdateUserGeneralSetting(currentUser?.name);
 
   const handleLocaleSelectChange = (locale: Locale) => {
     // Apply locale immediately for instant UI feedback and persist to localStorage
@@ -35,11 +35,7 @@ const PreferencesSection = () => {
   };
 
   const visibilityOptions = useMemo(
-    () =>
-      [Visibility.PRIVATE, Visibility.PROTECTED, Visibility.PUBLIC].map((v) => {
-        const value = convertVisibilityToString(v);
-        return { value, label: t(`memo.visibility.${value.toLowerCase() as Lowercase<typeof value>}`) };
-      }),
+    () => DEFAULT_VISIBILITY_OPTIONS.map((option) => ({ value: option.name, label: t(option.labelKey) })),
     [t],
   );
 
@@ -68,6 +64,17 @@ const PreferencesSection = () => {
     );
   };
 
+  const handleSaveMediaMetadataChange = (saveMediaMetadata: boolean) => {
+    updateUserGeneralSetting(
+      { generalSetting: { saveMediaMetadata }, updateMask: ["save_media_metadata"] },
+      {
+        onSuccess: async () => {
+          await refetchSettings();
+        },
+      },
+    );
+  };
+
   // Provide default values if setting is not loaded yet
   const setting: UserSetting_GeneralSetting =
     generalSetting ||
@@ -75,6 +82,7 @@ const PreferencesSection = () => {
       locale: "en",
       memoVisibility: "PRIVATE",
       theme: "system",
+      saveMediaMetadata: false,
     });
 
   return (
@@ -120,6 +128,26 @@ const PreferencesSection = () => {
                 ))}
               </SelectContent>
             </Select>
+          </SettingListItem>
+        </SettingList>
+      </SettingGroup>
+
+      <SettingGroup
+        title={t("setting.preference.uploads-privacy-title")}
+        description={t("setting.preference.uploads-privacy-description")}
+        showSeparator
+      >
+        <SettingList>
+          <SettingListItem
+            label={t("setting.preference.save-media-metadata")}
+            description={t("setting.preference.save-media-metadata-description")}
+          >
+            <Switch
+              aria-label={t("setting.preference.save-media-metadata")}
+              checked={setting.saveMediaMetadata}
+              disabled={isUpdatingGeneralSetting}
+              onCheckedChange={handleSaveMediaMetadataChange}
+            />
           </SettingListItem>
         </SettingList>
       </SettingGroup>

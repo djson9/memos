@@ -24,7 +24,6 @@
     "archive": "Arquivo",
     "archived": "Arquivada",
     "attachments": "Anexos",
-    "auto-expand": "Depregar Auto",
     "avatar": "Avatar",
     "basic": "Básico",
     "beta": "Beta",
@@ -66,6 +65,7 @@
     "last-updated-at": "Última actualización",
     "learn-more": "Saber máis",
     "link": "Ligar",
+    "manage": "Xestionar",
     "map": "Map",
     "mark": "Marcar",
     "memo": "Memo",
@@ -96,8 +96,6 @@
     "select": "Seleccionar",
     "settings": "Axustes",
     "share": "Compartir",
-    "shortcut-filter": "Filtrar co atallo",
-    "shortcuts": "Atallos",
     "sign-in": "Acceder",
     "sign-in-with": "Acceder con {{provider}}",
     "sign-out": "Fechar sesión",
@@ -115,6 +113,7 @@
     "username": "Identificador",
     "version": "Versión",
     "visibility": "Visibilidade",
+    "views": "Vistas",
     "yourself": "Ti",
     "empty-placeholder": "Baleiro",
     "unlink": "Desvincular"
@@ -205,6 +204,7 @@
     "filters": {
       "has-code": "hasCode",
       "has-link": "hasLink",
+      "has-location": "ten localización",
       "has-task-list": "hasTaskList",
       "label": "Filtros"
     },
@@ -455,9 +455,9 @@
       "memo-defaults-title": "Valores predeterminados da nota",
       "theme-description": "Aplica o tema seleccionado inmediatamente neste dispositivo."
     },
-    "shortcut": {
-      "delete-confirm": "Tes certeza de querer eliminar o atallo `{{title}}`?",
-      "delete-success": "Eliminouse correctamente o atallo `{{title}}`"
+    "memo-view": {
+      "delete-confirm": "Tes certeza de querer eliminar a vista `{{title}}`?",
+      "delete-success": "Eliminouse correctamente a vista `{{title}}`"
     },
     "sso": {
       "authorization-endpoint": "Punto de acceso para autorización",
@@ -540,7 +540,6 @@
       "path": "Ruta de almacenaxe",
       "path-description": "Podes usar as mesmas variables dinámicas do almacenaxe local, como {filename}",
       "path-placeholder": "persoal/ruta",
-      "presign-placeholder": "URL pre-acceso, optativo",
       "region": "Rexión",
       "region-placeholder": "Nome da rexión",
       "s3-compatible-url": "URL S3 compatible",

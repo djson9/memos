@@ -1,8 +1,26 @@
 import { create } from "@bufbuild/protobuf";
 import { useRef } from "react";
+import { v4 as uuidv4 } from "uuid";
+import { useAuth } from "@/contexts/AuthContext";
 import { type MotionMedia, MotionMediaFamily, MotionMediaRole, MotionMediaSchema } from "@/types/proto/api/v1/attachment_service_pb";
+import { mediaMetadataService } from "../services/mediaMetadataService";
 import type { LocalFile } from "../types/attachment";
 import { useBlobUrls } from "./useBlobUrls";
+
+/**
+ * Single ingest point turning picked/pasted/dropped Files into LocalFiles.
+ * Media metadata extraction starts here (not at upload time) so every upload
+ * path inherits the preference from the LocalFile instead of threading it.
+ */
+export const toLocalFiles = (files: File[], options: { createBlobUrl: (file: File) => string; saveMediaMetadata: boolean }): LocalFile[] =>
+  pairAppleLivePhotoFiles(
+    files.map((file) => ({
+      file,
+      previewUrl: options.createBlobUrl(file),
+      origin: "upload",
+      mediaMetadata: options.saveMediaMetadata ? mediaMetadataService.extract(file) : undefined,
+    })),
+  );
 
 export const useFileUpload = (onFilesSelected: (localFiles: LocalFile[]) => void) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -10,6 +28,8 @@ export const useFileUpload = (onFilesSelected: (localFiles: LocalFile[]) => void
   // Track preview blob URLs so they're revoked on unmount instead of leaking
   // (matches the paste/drop/audio paths, which all go through useBlobUrls).
   const { createBlobUrl } = useBlobUrls();
+  const { userGeneralSetting } = useAuth();
+  const saveMediaMetadata = userGeneralSetting?.saveMediaMetadata ?? false;
 
   const handleFileInputChange = (event?: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(fileInputRef.current?.files || event?.target.files || []);
@@ -17,20 +37,14 @@ export const useFileUpload = (onFilesSelected: (localFiles: LocalFile[]) => void
       return;
     }
     selectingFlagRef.current = true;
-    const localFiles: LocalFile[] = pairAppleLivePhotoFiles(
-      files.map((file) => ({
-        file,
-        previewUrl: createBlobUrl(file),
-        origin: "upload",
-      })),
-    );
+    const localFiles = toLocalFiles(files, { createBlobUrl, saveMediaMetadata });
     onFilesSelected(localFiles);
     selectingFlagRef.current = false;
     // Optionally clear input value to allow re-selecting the same file
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const handleUploadClick = (accept = "*") => {
+  const handleUploadClick = (accept = "") => {
     if (!fileInputRef.current) {
       return;
     }
@@ -47,7 +61,7 @@ export const useFileUpload = (onFilesSelected: (localFiles: LocalFile[]) => void
   };
 };
 
-const pairAppleLivePhotoFiles = (localFiles: LocalFile[]): LocalFile[] => {
+export const pairAppleLivePhotoFiles = (localFiles: LocalFile[]): LocalFile[] => {
   const stemMap = new Map<string, LocalFile[]>();
   for (const localFile of localFiles) {
     const stem = normalizeFilenameStem(localFile.file.name);
@@ -68,7 +82,7 @@ const pairAppleLivePhotoFiles = (localFiles: LocalFile[]): LocalFile[] => {
 
     const image = images[0];
     const video = videos[0];
-    const groupId = groupIds.get(stem) ?? `${stem}-${crypto.randomUUID()}`;
+    const groupId = groupIds.get(stem) ?? `${stem}-${uuidv4()}`;
     groupIds.set(stem, groupId);
     if (localFile.previewUrl === image.previewUrl) {
       return { ...localFile, motionMedia: buildLocalMotionMedia(groupId, MotionMediaRole.STILL) };

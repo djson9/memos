@@ -23,7 +23,6 @@
     "archive": "संग्रहीत करें",
     "archived": "संग्रहीत",
     "attachments": "संलग्नक",
-    "auto-expand": "स्वतः विस्तार",
     "avatar": "अवतार",
     "basic": "मूल",
     "beta": "बीटा",
@@ -65,6 +64,7 @@
     "last-updated-at": "अंतिम अपडेट",
     "learn-more": "अधिक जानें",
     "link": "लिंक",
+    "manage": "प्रबंधित करें",
     "map": "नक्शा",
     "mark": "चिह्नित",
     "memo": "मेमो",
@@ -95,8 +95,6 @@
     "select": "चयन करें",
     "settings": "सेटिंग्स",
     "share": "साझा करें",
-    "shortcut-filter": "शॉर्टकट फ़िल्टर",
-    "shortcuts": "शॉर्टकट्स",
     "sign-in": "साइन इन करें",
     "sign-in-with": "{{provider}} के साथ साइन इन करें",
     "sign-out": "साइन आउट करें",
@@ -114,6 +112,7 @@
     "username": "उपयोगकर्ता नाम",
     "version": "संस्करण",
     "visibility": "दृश्यता",
+    "views": "दृश्य",
     "yourself": "खुद"
   },
   "locale-picker": {
@@ -191,6 +190,7 @@
     "filters": {
       "has-code": "कोड है",
       "has-link": "लिंक है",
+      "has-location": "स्थान है",
       "has-task-list": "टास्क लिस्ट है",
       "label": "फिल्टर"
     },
@@ -334,9 +334,9 @@
       "theme": "थीम",
       "label": "प्राथमिकता"
     },
-    "shortcut": {
-      "delete-confirm": "क्या आप वाकई शॉर्टकट `{{title}}` हटाना चाहते हैं?",
-      "delete-success": "शॉर्टकट `{{title}}` सफलतापूर्वक हटाया गया"
+    "memo-view": {
+      "delete-confirm": "क्या आप वाकई दृश्य `{{title}}` हटाना चाहते हैं?",
+      "delete-success": "दृश्य `{{title}}` सफलतापूर्वक हटाया गया"
     },
     "sso": {
       "authorization-endpoint": "प्राधिकरण एंडपॉइंट",
@@ -378,7 +378,6 @@
       "path": "संग्रहण पथ",
       "path-description": "आप स्थानीय संग्रहण की वही डायनामिक वेरिएबल्स उपयोग कर सकते हैं, जैसे {filename}",
       "path-placeholder": "कस्टम/पथ",
-      "presign-placeholder": "प्री-साइन URL, वैकल्पिक",
       "region": "क्षेत्र",
       "region-placeholder": "क्षेत्र का नाम",
       "s3-compatible-url": "S3 संगत URL",

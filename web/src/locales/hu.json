@@ -24,7 +24,6 @@
     "archive": "Archiválás",
     "archived": "Archívum",
     "attachments": "Mellékletek",
-    "auto-expand": "Automatikus kinyitás",
     "avatar": "Avatar",
     "basic": "Általános",
     "beta": "Béta",
@@ -66,6 +65,7 @@
     "last-updated-at": "Utoljára frissítve",
     "learn-more": "További információ",
     "link": "Hivatkozás",
+    "manage": "Kezelés",
     "map": "Térkép",
     "mark": "Megjelölés",
     "memo": "Jegyzet",
@@ -96,8 +96,6 @@
     "select": "Kijelölés",
     "settings": "Beállítások",
     "share": "Megosztás",
-    "shortcut-filter": "Gyorsbillentyű szűrő",
-    "shortcuts": "Gyorsbillentyűk",
     "sign-in": "Bejelentkezés",
     "sign-in-with": "Bejelentkezés {{provider}} használatával",
     "sign-out": "Kijelentkezés",
@@ -115,6 +113,7 @@
     "username": "Felhasználónév",
     "version": "Verzió",
     "visibility": "Láthatóság",
+    "views": "Nézetek",
     "yourself": "Magad",
     "empty-placeholder": "Üres",
     "unlink": "Leválasztás"
@@ -205,6 +204,7 @@
     "filters": {
       "has-code": "vanKód",
       "has-link": "vanLink",
+      "has-location": "van helyadat",
       "has-task-list": "vanFeladatLista",
       "label": "Szűrők"
     },
@@ -455,9 +455,9 @@
       "memo-defaults-title": "A jegyzet alapbeállításai",
       "theme-description": "Azonnal alkalmazza a kiválasztott témát ezen az eszközön."
     },
-    "shortcut": {
-      "delete-confirm": "Biztosan törlöd a `{{title}}` gyorsbillentyűt?",
-      "delete-success": "`{{title}}` gyorsbillentyű sikeresen törölve"
+    "memo-view": {
+      "delete-confirm": "Biztosan törlöd a `{{title}}` nézetet?",
+      "delete-success": "`{{title}}` nézet sikeresen törölve"
     },
     "sso": {
       "authorization-endpoint": "Hitelesítési végpont",
@@ -540,7 +540,6 @@
       "path": "Tárhely útvonala",
       "path-description": "Használhatod ugyanazokat a dinamikus változókat a helyi tárhelyből, mint a {filename}",
       "path-placeholder": "egyedi/útvonal",
-      "presign-placeholder": "Előre aláírt URL, opcionális",
       "region": "Régió",
       "region-placeholder": "Régió neve",
       "s3-compatible-url": "S3 kompatibilis URL",

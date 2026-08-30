@@ -1,6 +1,17 @@
 import { uniqBy } from "lodash-es";
-import { CheckIcon, FileIcon, ImageIcon, LinkIcon, LoaderIcon, MapPinIcon, Maximize2Icon, MicIcon, PlusIcon, TypeIcon } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import {
+  CheckIcon,
+  ImageIcon,
+  LinkIcon,
+  LoaderIcon,
+  MapPinIcon,
+  Maximize2Icon,
+  MicIcon,
+  PaperclipIcon,
+  PlusIcon,
+  TypeIcon,
+} from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { LinkMemoDialog, LocationDialog } from "@/components/MemoMetadata";
 import type { MapPoint } from "@/components/map/types";
 import { useReverseGeocoding } from "@/components/map/useReverseGeocoding";
@@ -22,21 +33,16 @@ import type { LocalFile } from "../types/attachment";
 
 const InsertMenu = (props: InsertMenuProps) => {
   const t = useTranslate();
-  const { actions, dispatch } = useEditorContext();
+  const { actions, dispatch, getState } = useEditorContext();
   const relations = useEditorSelector((s) => s.metadata.relations);
-  const {
-    location: initialLocation,
-    onLocationChange,
-    onToggleFocusMode,
-    onToggleFormattingToolbar,
-    isFormattingToolbarVisible,
-    isUploading: isUploadingProp,
-  } = props;
+  const { location: initialLocation, onLocationChange, viewToggles, isUploading: isUploadingProp } = props;
 
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [locationDialogOpen, setLocationDialogOpen] = useState(false);
+  const inlineImageInputRef = useRef<HTMLInputElement>(null);
 
   const { fileInputRef, selectingFlag, handleFileInputChange, handleUploadClick } = useFileUpload((newFiles: LocalFile[]) => {
+    if (getState().ui.isLoading.saving) return;
     newFiles.forEach((file) => dispatch(actions.addLocalFile(file)));
   });
 
@@ -80,6 +86,7 @@ const InsertMenu = (props: InsertMenuProps) => {
   }, [displayName, setPlaceholder]);
 
   const isUploading = selectingFlag || isUploadingProp;
+  const insertionDisabled = isUploading || props.isSaving;
 
   const handleOpenLinkDialog = useCallback(() => {
     setLinkDialogOpen(true);
@@ -114,19 +121,30 @@ const InsertMenu = (props: InsertMenuProps) => {
     setLocationDialogOpen(false);
   }, [locationReset]);
 
-  const handleMediaUploadClick = useCallback(() => {
-    handleUploadClick("image/*,video/*");
-  }, [handleUploadClick]);
-
-  const handleFileUploadClick = useCallback(() => {
+  const handleAttachmentUploadClick = useCallback(() => {
+    if (getState().ui.isLoading.saving) return;
     handleUploadClick();
-  }, [handleUploadClick]);
+  }, [getState, handleUploadClick]);
+
+  const handleInlineImageUploadClick = useCallback(() => {
+    if (getState().ui.isLoading.saving) return;
+    inlineImageInputRef.current?.click();
+  }, [getState]);
+
+  const handleInlineImageInputChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const files = Array.from(event.target.files ?? []);
+      if (files.length > 0) props.onInsertImages(files);
+      event.target.value = "";
+    },
+    [props.onInsertImages],
+  );
 
   // Insert actions (add content).
   const insertItems = [
-    { key: "media", label: t("attachment-library.tabs.media"), icon: ImageIcon, onClick: handleMediaUploadClick },
+    { key: "attachment", label: t("editor.insert-menu.add-attachment"), icon: PaperclipIcon, onClick: handleAttachmentUploadClick },
+    { key: "inline-image", label: t("editor.insert-menu.insert-image"), icon: ImageIcon, onClick: handleInlineImageUploadClick },
     { key: "audio", label: t("editor.audio-recorder.trigger"), icon: MicIcon, onClick: props.onAudioRecorderClick },
-    { key: "file", label: t("common.file"), icon: FileIcon, onClick: handleFileUploadClick },
     { key: "link", label: t("editor.insert-menu.link-memo"), icon: LinkIcon, onClick: handleOpenLinkDialog },
     { key: "location", label: t("editor.insert-menu.add-location"), icon: MapPinIcon, onClick: handleLocationClick },
   ];
@@ -134,27 +152,32 @@ const InsertMenu = (props: InsertMenuProps) => {
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger render={<Button variant="secondary" size="icon" disabled={isUploading} />}>
+        <DropdownMenuTrigger render={<Button variant="secondary" size="icon" disabled={insertionDisabled} aria-label={t("common.add")} />}>
           {isUploading ? <LoaderIcon className="size-4 animate-spin" /> : <PlusIcon className="size-4" />}
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
           {insertItems.map((item) => (
-            <DropdownMenuItem key={item.key} onClick={item.onClick}>
+            <DropdownMenuItem key={item.key} onClick={item.onClick} disabled={props.isSaving}>
               <item.icon className="w-4 h-4" />
               {item.label}
             </DropdownMenuItem>
           ))}
-          <DropdownMenuSeparator />
-          {/* View toggles: focus mode + formatting-toolbar visibility. */}
-          <DropdownMenuItem onClick={onToggleFocusMode}>
-            <Maximize2Icon className="w-4 h-4" />
-            {t("editor.focus-mode")}
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={onToggleFormattingToolbar}>
-            <TypeIcon className="w-4 h-4" />
-            {t("editor.formatting-toolbar")}
-            {isFormattingToolbarVisible && <CheckIcon className="w-4 h-4 ml-auto" />}
-          </DropdownMenuItem>
+          {/* View toggles: focus mode + formatting-toolbar visibility. Absent
+              when a host owns the editor's presentation — neither applies there. */}
+          {viewToggles && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={viewToggles.onToggleFocusMode}>
+                <Maximize2Icon className="w-4 h-4" />
+                {t("editor.focus-mode")}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={viewToggles.onToggleFormattingToolbar}>
+                <TypeIcon className="w-4 h-4" />
+                {t("editor.formatting-toolbar")}
+                {viewToggles.isFormattingToolbarVisible && <CheckIcon className="w-4 h-4 ml-auto" />}
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -162,11 +185,21 @@ const InsertMenu = (props: InsertMenuProps) => {
       <input
         className="hidden"
         ref={fileInputRef}
-        disabled={isUploading}
+        disabled={insertionDisabled}
         onChange={handleFileInputChange}
         type="file"
         multiple={true}
-        accept="*"
+        accept=""
+      />
+
+      <input
+        className="hidden"
+        ref={inlineImageInputRef}
+        disabled={insertionDisabled}
+        onChange={handleInlineImageInputChange}
+        type="file"
+        multiple={true}
+        accept="image/*"
       />
 
       <LinkMemoDialog

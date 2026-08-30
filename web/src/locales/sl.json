@@ -24,7 +24,6 @@
     "archive": "Arhiv",
     "archived": "Arhivirani",
     "attachments": "Priloge",
-    "auto-expand": "Samodejno razširi",
     "avatar": "Avatar",
     "basic": "Osnovni",
     "beta": "Beta",
@@ -66,6 +65,7 @@
     "last-updated-at": "Zadnja posodobitev",
     "learn-more": "Spoznaj več",
     "link": "Povezava",
+    "manage": "Upravljaj",
     "map": "Zemljevid",
     "mark": "Označi",
     "memo": "Beležka",
@@ -96,8 +96,6 @@
     "select": "Izberi",
     "settings": "Nastavitve",
     "share": "Deli",
-    "shortcut-filter": "Filter bližnjic",
-    "shortcuts": "Bližnjice",
     "sign-in": "Prijavi se",
     "sign-in-with": "Prijavi se z {{provider}}",
     "sign-out": "Odjavi se",
@@ -115,6 +113,7 @@
     "username": "Uporabniško ime",
     "version": "Verzija",
     "visibility": "Vidnost",
+    "views": "Pogledi",
     "yourself": "Ti",
     "empty-placeholder": "prazno",
     "unlink": "Prekini povezavo"
@@ -205,6 +204,7 @@
     "filters": {
       "has-code": "imaKodo",
       "has-link": "imaPovezavo",
+      "has-location": "imaLokacijo",
       "has-task-list": "imaSeznamOpravil",
       "label": "Filtri"
     },
@@ -455,9 +455,9 @@
       "memo-defaults-title": "Privzete nastavitve beležke",
       "theme-description": "Izbrano temo takoj uporabi v tej napravi."
     },
-    "shortcut": {
-      "delete-confirm": "Ali ste prepričani, da želite izbrisati bližnjico \"{{title}}\"?",
-      "delete-success": "Bližnjica \"{{title}}\" je uspešno izbrisana"
+    "memo-view": {
+      "delete-confirm": "Ali ste prepričani, da želite izbrisati pogled \"{{title}}\"?",
+      "delete-success": "Pogled \"{{title}}\" je uspešno izbrisan"
     },
     "sso": {
       "authorization-endpoint": "Končna točka avtorizacije",
@@ -540,7 +540,6 @@
       "path": "Pot shrambe",
       "path-description": "Uporabite lahko iste dinamične spremenljivke iz lokalne shrambe, kot je {filename}",
       "path-placeholder": "pot/po/meri",
-      "presign-placeholder": "URL pred-prijave, opcijsko",
       "region": "Regija",
       "region-placeholder": "Ime regije",
       "s3-compatible-url": "S3 združljiv URL",

@@ -89,13 +89,11 @@ func (s *APIV1Service) broadcastAttachmentProgress(attachment *store.Attachment,
 	} else if progress > 100 {
 		progress = 100
 	}
-	s.SSEHub.Broadcast(&SSEEvent{
-		Type:       SSEEventAttachmentProgress,
-		Name:       AttachmentNamePrefix + attachment.UID,
-		Filename:   attachment.Filename,
-		Stage:      stage,
-		Progress:   progress,
-		Visibility: store.Private,
-		CreatorID:  creatorID,
-	})
+	s.SSEHub.publishAttachmentProgress(
+		creatorID,
+		AttachmentNamePrefix+attachment.UID,
+		attachment.Filename,
+		stage,
+		progress,
+	)
 }

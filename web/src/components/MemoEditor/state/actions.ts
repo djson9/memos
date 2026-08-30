@@ -9,7 +9,12 @@ export const editorActions = {
 
   updateContent: (content: string): EditorAction => ({
     type: "UPDATE_CONTENT",
-    payload: content,
+    payload: { content, source: "editor" },
+  }),
+
+  setContent: (content: string): EditorAction => ({
+    type: "UPDATE_CONTENT",
+    payload: { content, source: "external" },
   }),
 
   setMetadata: (metadata: Partial<EditorState["metadata"]>): EditorAction => ({
@@ -39,6 +44,11 @@ export const editorActions = {
   setLoading: (key: LoadingKey, value: boolean): EditorAction => ({
     type: "SET_LOADING",
     payload: { key, value },
+  }),
+
+  setPendingInlineImageInsertions: (value: number): EditorAction => ({
+    type: "SET_PENDING_INLINE_IMAGE_INSERTIONS",
+    payload: value,
   }),
 
   setTimestamps: (timestamps: Partial<EditorState["timestamps"]>): EditorAction => ({

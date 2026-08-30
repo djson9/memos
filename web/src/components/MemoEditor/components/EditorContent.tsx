@@ -1,9 +1,7 @@
 import { forwardRef } from "react";
 import Editor from "../Editor";
-import { useBlobUrls } from "../hooks";
 import { useEditorContext, useEditorSelector } from "../state";
 import type { EditorContentProps } from "../types";
-import type { LocalFile } from "../types/attachment";
 import type { EditorController } from "../types/editorController";
 
 // Imported eagerly (not React.lazy): the editor is the always-present compose
@@ -16,23 +14,18 @@ import type { EditorController } from "../types/editorController";
  * editor serializes into state.content on every change and exposes its
  * formatting capability for the focus-mode toolbar.
  */
-export const EditorContent = forwardRef<EditorController, EditorContentProps>(({ placeholder, onSubmit }, ref) => {
+export const EditorContent = forwardRef<EditorController, EditorContentProps>(({ placeholder, onSubmit, onFiles }, ref) => {
   const { actions, dispatch } = useEditorContext();
-  const { createBlobUrl } = useBlobUrls();
   const content = useEditorSelector((s) => s.content);
+  const contentSource = useEditorSelector((s) => s.contentSource);
   const isFocusMode = useEditorSelector((s) => s.ui.isFocusMode);
-
-  const handleFiles = (files: File[]) => {
-    const localFiles: LocalFile[] = files.map((file) => ({
-      file,
-      previewUrl: createBlobUrl(file),
-      origin: "upload",
-    }));
-    localFiles.forEach((localFile) => dispatch(actions.addLocalFile(localFile)));
-  };
 
   const handleContentChange = (content: string) => {
     dispatch(actions.updateContent(content));
+  };
+
+  const handleExternalContentApplied = (content: string) => {
+    dispatch(actions.setContent(content));
   };
 
   return (
@@ -41,10 +34,12 @@ export const EditorContent = forwardRef<EditorController, EditorContentProps>(({
         ref={ref}
         className="memo-editor-content"
         initialContent={content}
+        contentIsExternal={contentSource === "external"}
         placeholder={placeholder || ""}
         isFocusMode={isFocusMode}
         onContentChange={handleContentChange}
-        onFiles={handleFiles}
+        onExternalContentApplied={handleExternalContentApplied}
+        onFiles={onFiles}
         onSubmit={onSubmit}
       />
     </div>

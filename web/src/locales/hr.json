@@ -24,7 +24,6 @@
     "archive": "Arhiviraj",
     "archived": "Arhivirano",
     "attachments": "Privici",
-    "auto-expand": "Automatski proširi",
     "avatar": "Avatar",
     "basic": "Osnovno",
     "beta": "Beta",
@@ -66,6 +65,7 @@
     "last-updated-at": "Zadnje ažurirano",
     "learn-more": "Nauči više",
     "link": "Link",
+    "manage": "Upravljaj",
     "map": "Karta",
     "mark": "Označi",
     "memo": "Memo",
@@ -96,8 +96,6 @@
     "select": "Odaberi",
     "settings": "Postavke",
     "share": "Podijeli",
-    "shortcut-filter": "Filter prečaca",
-    "shortcuts": "Prečaci",
     "sign-in": "Prijavi se",
     "sign-in-with": "Prijavi se s {{provider}}",
     "sign-out": "Odjavi se",
@@ -115,6 +113,7 @@
     "username": "Korisničko ime",
     "version": "Verzija",
     "visibility": "Vidljivost",
+    "views": "Prikazi",
     "yourself": "Ti",
     "empty-placeholder": "Prazan",
     "unlink": "Prekini vezu"
@@ -205,6 +204,7 @@
     "filters": {
       "has-code": "imaKod",
       "has-link": "imaLink",
+      "has-location": "ima lokaciju",
       "has-task-list": "imaZadatke",
       "label": "Filteri"
     },
@@ -455,9 +455,9 @@
       "memo-defaults-title": "Zadane postavke bilješke",
       "theme-description": "Odmah primjenjuje odabranu temu na ovom uređaju."
     },
-    "shortcut": {
-      "delete-confirm": "Jesi li siguran da želiš obrisati prečac `{{title}}`?",
-      "delete-success": "Prečac `{{title}}` uspješno obrisan"
+    "memo-view": {
+      "delete-confirm": "Jesi li siguran da želiš obrisati prikaz `{{title}}`?",
+      "delete-success": "Prikaz `{{title}}` uspješno obrisan"
     },
     "sso": {
       "authorization-endpoint": "Krajnja točka autorizacije",
@@ -540,7 +540,6 @@
       "path": "Putanja skladišta",
       "path-description": "Možeš koristiti iste dinamičke varijable kao i lokalno skladište, npr. {filename}",
       "path-placeholder": "prilagođena/putanja",
-      "presign-placeholder": "Pre-sign URL, opcionalno",
       "region": "Regija",
       "region-placeholder": "Naziv regije",
       "s3-compatible-url": "S3 kompatibilan URL",

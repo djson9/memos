@@ -3,6 +3,7 @@ package v1
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -41,9 +42,9 @@ func (c *fakeAttachmentCompressor) Compress(
 
 func TestCompressAttachmentUpdatesMediaAndBroadcastsPrivateProgress(t *testing.T) {
 	hub := NewSSEHub()
-	owner := hub.Subscribe(7, store.RoleUser)
+	owner := hub.Subscribe(7)
 	defer hub.Unsubscribe(owner)
-	other := hub.Subscribe(8, store.RoleUser)
+	other := hub.Subscribe(8)
 	defer hub.Unsubscribe(other)
 
 	compressor := &fakeAttachmentCompressor{
@@ -77,10 +78,23 @@ func TestCompressAttachmentUpdatesMediaAndBroadcastsPrivateProgress(t *testing.T
 	require.Equal(t, "clip.mp4", attachment.Filename)
 	require.Equal(t, "video/mp4", attachment.Type)
 
-	var events []SSEEvent
+	var events []struct {
+		Type     string `json:"type"`
+		Name     string `json:"name"`
+		Filename string `json:"filename"`
+		Stage    string `json:"stage"`
+		Progress int    `json:"progress"`
+	}
 	for len(owner.events) > 0 {
-		var event SSEEvent
-		require.NoError(t, json.Unmarshal(<-owner.events, &event))
+		var event struct {
+			Type     string `json:"type"`
+			Name     string `json:"name"`
+			Filename string `json:"filename"`
+			Stage    string `json:"stage"`
+			Progress int    `json:"progress"`
+		}
+		frame := strings.TrimSpace(strings.TrimPrefix(string(<-owner.events), "data:"))
+		require.NoError(t, json.Unmarshal([]byte(frame), &event))
 		events = append(events, event)
 	}
 	require.Len(t, events, 3)

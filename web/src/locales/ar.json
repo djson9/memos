@@ -23,7 +23,6 @@
     "archive": "الأرشيف",
     "archived": "المؤرشفة",
     "attachments": "مرفقات",
-    "auto-expand": "توسيع تلقائي",
     "avatar": "الصورة الشخصية",
     "basic": "بسيط",
     "beta": "تجريبي",
@@ -65,6 +64,7 @@
     "last-updated-at": "آخر تحديث في",
     "learn-more": "تعلم المزيد",
     "link": "الرابط",
+    "manage": "إدارة",
     "map": "خريطة",
     "mark": "تعليم",
     "memo": "مذكرة",
@@ -95,8 +95,6 @@
     "select": "تحديد",
     "settings": "الإعدادات",
     "share": "مشاركة",
-    "shortcut-filter": "تصفية الاختصارات",
-    "shortcuts": "اختصارات",
     "sign-in": "تسجيل الدخول",
     "sign-in-with": "تسجيل دخول بواسطة {{provider}}",
     "sign-out": "تسجيل خروج",
@@ -114,6 +112,7 @@
     "username": "اسم المستخدم",
     "version": "الإصدار",
     "visibility": "الرؤية",
+    "views": "طرق العرض",
     "yourself": "نفسك"
   },
   "locale-picker": {
@@ -191,6 +190,7 @@
     "filters": {
       "has-code": "يحتوي على كود",
       "has-link": "يحتوي على رابط",
+      "has-location": "يحتوي على موقع",
       "has-task-list": "يحتوي على قائمة مهام",
       "label": "المرشحات"
     },
@@ -334,9 +334,9 @@
       "theme": "السمة",
       "label": "التفضيلات"
     },
-    "shortcut": {
-      "delete-confirm": "هل أنت متأكد من حذف الاختصار `{{title}}`؟",
-      "delete-success": "تم حذف الاختصار `{{title}}` بنجاح"
+    "memo-view": {
+      "delete-confirm": "هل أنت متأكد من حذف طريقة العرض `{{title}}`؟",
+      "delete-success": "تم حذف طريقة العرض `{{title}}` بنجاح"
     },
     "sso": {
       "authorization-endpoint": "نقطة نهاية التفويض",
@@ -378,7 +378,6 @@
       "path": "مسار التخزين",
       "path-description": "يمكنك استخدام نفس المتغيرات الديناميكية من التخزين المحلي، مثل {filename}",
       "path-placeholder": "مسار/مخصص",
-      "presign-placeholder": "رابط توقيع مسبق، اختياري",
       "region": "المنطقة",
       "region-placeholder": "اسم المنطقة",
       "s3-compatible-url": "رابط متوافق مع S3",

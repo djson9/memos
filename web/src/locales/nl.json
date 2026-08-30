@@ -24,7 +24,6 @@
     "archive": "Archiveren",
     "archived": "Gearchiveerd",
     "attachments": "Bijlagen",
-    "auto-expand": "Auto uitklappen",
     "avatar": "Avatar",
     "basic": "Simpel",
     "beta": "Beta",
@@ -66,6 +65,7 @@
     "last-updated-at": "Laatst bijgewerkt op",
     "learn-more": "Meer informatie",
     "link": "Link",
+    "manage": "Beheren",
     "map": "Kaart",
     "mark": "Markeren",
     "memo": "Memo",
@@ -96,8 +96,6 @@
     "select": "Selecteren",
     "settings": "Instellingen",
     "share": "Delen",
-    "shortcut-filter": "Sneltoetsfilter",
-    "shortcuts": "Sneltoetsen",
     "sign-in": "Inloggen",
     "sign-in-with": "Inloggen met {{provider}}",
     "sign-out": "Uitloggen",
@@ -115,6 +113,7 @@
     "username": "Gebruikersnaam",
     "version": "Versie",
     "visibility": "Zichtbaarheid",
+    "views": "Weergaven",
     "yourself": "Jijzelf",
     "empty-placeholder": "Leeg",
     "unlink": "Ontkoppelen"
@@ -205,6 +204,7 @@
     "filters": {
       "has-code": "heeftCode",
       "has-link": "heeftLink",
+      "has-location": "heeft locatie",
       "has-task-list": "heeftTakenlijst",
       "label": "Filters"
     },
@@ -455,9 +455,9 @@
       "memo-defaults-title": "Standaardinstellingen voor memo's",
       "theme-description": "Past het geselecteerde thema onmiddellijk toe op dit apparaat."
     },
-    "shortcut": {
-      "delete-confirm": "Weet je zeker dat je sneltoets `{{title}}` wilt verwijderen?",
-      "delete-success": "Sneltoets `{{title}}` succesvol verwijderd"
+    "memo-view": {
+      "delete-confirm": "Weet je zeker dat je weergave `{{title}}` wilt verwijderen?",
+      "delete-success": "Weergave `{{title}}` succesvol verwijderd"
     },
     "sso": {
       "authorization-endpoint": "Autorisatie-eindpunt",
@@ -540,7 +540,6 @@
       "path": "Opslagpad",
       "path-description": "Je kan dezelfde dynamische variabelen gebruiken, zoals {filename}",
       "path-placeholder": "eigen/pad",
-      "presign-placeholder": "Pre-sign URL, optioneel",
       "region": "Regio",
       "region-placeholder": "Regionaam",
       "s3-compatible-url": "S3 compatibele URL",

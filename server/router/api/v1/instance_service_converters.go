@@ -36,6 +36,10 @@ func convertInstanceSettingFromStore(setting *storepb.InstanceSetting) *v1pb.Ins
 		instanceSetting.Value = &v1pb.InstanceSetting_AiSetting{
 			AiSetting: convertInstanceAISettingFromStore(setting.GetAiSetting()),
 		}
+	case *storepb.InstanceSetting_AccessSetting:
+		instanceSetting.Value = &v1pb.InstanceSetting_AccessSetting_{
+			AccessSetting: convertInstanceAccessSettingFromStore(setting.GetAccessSetting()),
+		}
 	default:
 		// Leave Value unset for unsupported setting variants.
 	}
@@ -75,10 +79,36 @@ func convertInstanceSettingToStore(setting *v1pb.InstanceSetting) *storepb.Insta
 		instanceSetting.Value = &storepb.InstanceSetting_AiSetting{
 			AiSetting: convertInstanceAISettingToStore(setting.GetAiSetting()),
 		}
+	case storepb.InstanceSettingKey_ACCESS:
+		instanceSetting.Value = &storepb.InstanceSetting_AccessSetting{
+			AccessSetting: convertInstanceAccessSettingToStore(setting.GetAccessSetting()),
+		}
 	default:
 		// Keep the default GeneralSetting value
 	}
 	return instanceSetting
+}
+
+func convertInstanceAccessSettingFromStore(setting *storepb.InstanceAccessSetting) *v1pb.InstanceSetting_AccessSetting {
+	if setting == nil {
+		return nil
+	}
+	return &v1pb.InstanceSetting_AccessSetting{
+		AccessMode: convertInstanceAccessModeFromStore(setting.AccessMode),
+	}
+}
+
+func convertInstanceAccessSettingToStore(setting *v1pb.InstanceSetting_AccessSetting) *storepb.InstanceAccessSetting {
+	if setting == nil {
+		return nil
+	}
+	return &storepb.InstanceAccessSetting{
+		AccessMode: storepb.InstanceAccessMode(setting.AccessMode),
+	}
+}
+
+func convertInstanceAccessModeFromStore(mode storepb.InstanceAccessMode) v1pb.InstanceAccessMode {
+	return v1pb.InstanceAccessMode(mode)
 }
 
 func convertInstanceGeneralSettingFromStore(setting *storepb.InstanceGeneralSetting) *v1pb.InstanceSetting_GeneralSetting {
@@ -136,6 +166,10 @@ func convertInstanceStorageSettingFromStore(settingpb *storepb.InstanceStorageSe
 		StorageType:       v1pb.InstanceSetting_StorageSetting_StorageType(settingpb.StorageType),
 		FilepathTemplate:  settingpb.FilepathTemplate,
 		UploadSizeLimitMb: settingpb.UploadSizeLimitMb,
+		DefaultStorageId:  settingpb.DefaultStorageId,
+	}
+	for _, storagepb := range settingpb.Storages {
+		setting.Storages = append(setting.Storages, convertStorageFromStore(storagepb))
 	}
 	if settingpb.S3Config != nil {
 		setting.S3Config = &v1pb.InstanceSetting_StorageSetting_S3Config{
@@ -159,6 +193,10 @@ func convertInstanceStorageSettingToStore(setting *v1pb.InstanceSetting_StorageS
 		StorageType:       storepb.InstanceStorageSetting_StorageType(setting.StorageType),
 		FilepathTemplate:  setting.FilepathTemplate,
 		UploadSizeLimitMb: setting.UploadSizeLimitMb,
+		DefaultStorageId:  setting.DefaultStorageId,
+	}
+	for _, storage := range setting.Storages {
+		settingpb.Storages = append(settingpb.Storages, convertStorageToStore(storage))
 	}
 	if setting.S3Config != nil {
 		settingpb.S3Config = &storepb.StorageS3Config{
@@ -172,6 +210,56 @@ func convertInstanceStorageSettingToStore(setting *v1pb.InstanceSetting_StorageS
 		}
 	}
 	return settingpb
+}
+
+func convertStorageFromStore(storagepb *storepb.Storage) *v1pb.InstanceSetting_Storage {
+	if storagepb == nil {
+		return nil
+	}
+	storage := &v1pb.InstanceSetting_Storage{
+		Id:   storagepb.Id,
+		Name: storagepb.Name,
+		Type: v1pb.InstanceSetting_StorageType(storagepb.Type),
+	}
+	if s3Config := storagepb.GetS3Config(); s3Config != nil {
+		storage.Config = &v1pb.InstanceSetting_Storage_S3Config_{
+			S3Config: &v1pb.InstanceSetting_Storage_S3Config{
+				AccessKeyId: s3Config.AccessKeyId,
+				// AccessKeySecret is write-only: never returned in responses.
+				Endpoint:              s3Config.Endpoint,
+				Region:                s3Config.Region,
+				Bucket:                s3Config.Bucket,
+				UsePathStyle:          s3Config.UsePathStyle,
+				InsecureSkipTlsVerify: s3Config.InsecureSkipTlsVerify,
+			},
+		}
+	}
+	return storage
+}
+
+func convertStorageToStore(storage *v1pb.InstanceSetting_Storage) *storepb.Storage {
+	if storage == nil {
+		return nil
+	}
+	storagepb := &storepb.Storage{
+		Id:   storage.Id,
+		Name: storage.Name,
+		Type: storepb.StorageType(storage.Type),
+	}
+	if s3Config := storage.GetS3Config(); s3Config != nil {
+		storagepb.Config = &storepb.Storage_S3Config{
+			S3Config: &storepb.StorageS3Config{
+				AccessKeyId:           s3Config.AccessKeyId,
+				AccessKeySecret:       s3Config.AccessKeySecret,
+				Endpoint:              s3Config.Endpoint,
+				Region:                s3Config.Region,
+				Bucket:                s3Config.Bucket,
+				UsePathStyle:          s3Config.UsePathStyle,
+				InsecureSkipTlsVerify: s3Config.InsecureSkipTlsVerify,
+			},
+		}
+	}
+	return storagepb
 }
 
 func convertInstanceMemoRelatedSettingFromStore(setting *storepb.InstanceMemoRelatedSetting) *v1pb.InstanceSetting_MemoRelatedSetting {

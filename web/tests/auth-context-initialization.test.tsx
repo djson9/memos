@@ -6,7 +6,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const authState = vi.hoisted(() => ({ hasToken: false }));
 const clients = vi.hoisted(() => ({
   getCurrentUser: vi.fn(),
-  listShortcuts: vi.fn(),
   listUserSettings: vi.fn(),
 }));
 
@@ -21,9 +20,6 @@ vi.mock("@/connect", () => ({
     signOut: vi.fn(),
   },
   refreshAccessToken: vi.fn(async () => undefined),
-  shortcutServiceClient: {
-    listShortcuts: clients.listShortcuts,
-  },
   userServiceClient: {
     listUserSettings: clients.listUserSettings,
   },
@@ -32,10 +28,11 @@ vi.mock("@/connect", () => ({
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 
 const Probe = () => {
-  const { currentUser, initialize, isInitialized } = useAuth();
+  const { currentUser, initialize, isInitialized, isUserSettingsInitialized } = useAuth();
   return (
     <div>
       <span data-testid="initialized">{isInitialized ? "yes" : "no"}</span>
+      <span data-testid="user-settings-initialized">{isUserSettingsInitialized ? "yes" : "no"}</span>
       <span data-testid="user">{currentUser?.name ?? "none"}</span>
       <button type="button" onClick={() => void initialize()}>
         initialize
@@ -54,20 +51,13 @@ describe("AuthProvider initialization", () => {
   beforeEach(() => {
     authState.hasToken = false;
     clients.getCurrentUser.mockReset();
-    clients.listShortcuts.mockReset();
     clients.listUserSettings.mockReset();
   });
 
   it("resets full readiness while post-sign-in settings are pending", async () => {
     let resolveSettings!: (value: { settings: [] }) => void;
-    let resolveShortcuts!: (value: { shortcuts: [] }) => void;
     clients.getCurrentUser.mockResolvedValue({ user: { name: "users/alice", username: "alice" } });
-    clients.listUserSettings.mockImplementation(
-      () => new Promise<{ settings: [] }>((resolve) => (resolveSettings = resolve)),
-    );
-    clients.listShortcuts.mockImplementation(
-      () => new Promise<{ shortcuts: [] }>((resolve) => (resolveShortcuts = resolve)),
-    );
+    clients.listUserSettings.mockImplementation(() => new Promise<{ settings: [] }>((resolve) => (resolveSettings = resolve)));
 
     render(<Probe />, { wrapper });
 
@@ -80,9 +70,10 @@ describe("AuthProvider initialization", () => {
     fireEvent.click(screen.getByRole("button", { name: "initialize" }));
     await waitFor(() => expect(screen.getByTestId("user")).toHaveTextContent("users/alice"));
     expect(screen.getByTestId("initialized")).toHaveTextContent("no");
+    expect(screen.getByTestId("user-settings-initialized")).toHaveTextContent("no");
 
     resolveSettings({ settings: [] });
-    resolveShortcuts({ shortcuts: [] });
-    await waitFor(() => expect(screen.getByTestId("initialized")).toHaveTextContent("yes"));
+    await waitFor(() => expect(screen.getByTestId("user-settings-initialized")).toHaveTextContent("yes"));
+    expect(screen.getByTestId("initialized")).toHaveTextContent("yes");
   });
 });

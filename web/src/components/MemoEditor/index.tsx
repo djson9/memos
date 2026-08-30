@@ -17,16 +17,28 @@ import {
   TimestampPopover,
 } from "./components";
 import { FOCUS_MODE_STYLES, FORMATTING_TOOLBAR_STORAGE_KEY } from "./constants";
-import { useAudioRecorder, useAutoSave, useFocusMode, useMemoInit, useMemoSave } from "./hooks";
-import { errorService, transcriptionService } from "./services";
+import {
+  splitInlineLocalFiles,
+  toLocalFiles,
+  useAudioRecorder,
+  useAutoSave,
+  useBlobUrls,
+  useFocusMode,
+  useInlineImageUpload,
+  useMemoInit,
+  useMemoSave,
+} from "./hooks";
+import { cacheService, errorService, transcriptionService } from "./services";
 import { EditorProvider, useEditorContext, useEditorSelector } from "./state";
 import { EditorToolbar, FormattingToolbar } from "./Toolbar";
-import type { MemoEditorProps } from "./types";
+import type { EditorViewToggles, MemoEditorProps } from "./types";
 import type { LocalFile } from "./types/attachment";
 import type { EditorController } from "./types/editorController";
 
+// A host that presents the editor full-screen supplies `onFocusModeExit`; its
+// presence is what makes an instance hosted, so focus mode starts on and stays on.
 const MemoEditor = (props: MemoEditorProps) => (
-  <EditorProvider>
+  <EditorProvider initialFocusMode={Boolean(props.onFocusModeExit)}>
     <MemoEditorImpl {...props} />
   </EditorProvider>
 );
@@ -36,30 +48,40 @@ const MemoEditorImpl: React.FC<MemoEditorProps> = ({
   cacheKey,
   memo,
   parentMemoName,
+  defaultSpace,
   autoFocus,
+  onFocusModeExit,
   placeholder,
   defaultCreateTime,
   onConfirm,
   onCancel,
+  onSavingChange,
 }) => {
   const t = useTranslate();
   const currentUser = useCurrentUser();
   const editorRef = useRef<EditorController>(null);
-  const { actions, dispatch } = useEditorContext();
+  const { actions, dispatch, getState } = useEditorContext();
   // Subscribe only to the low-frequency slices this component renders from, so
   // typing (which changes content) does not re-render the editor shell and its
   // toolbar/metadata children.
   const isFocusMode = useEditorSelector((s) => s.ui.isFocusMode);
+  const isSaving = useEditorSelector((s) => s.ui.isLoading.saving);
   const hasTimestamp = useEditorSelector((s) => Boolean(s.timestamps.createTime));
   const { userGeneralSetting } = useAuth();
   const { aiSetting, fetchSetting } = useInstance();
   const [isAudioRecorderOpen, setIsAudioRecorderOpen] = useState(false);
   const [isTranscribingAudio, setIsTranscribingAudio] = useState(false);
+  const { createBlobUrl } = useBlobUrls();
+  const saveMediaMetadata = userGeneralSetting?.saveMediaMetadata ?? false;
+  const inlineImageUpload = useInlineImageUpload(editorRef);
   // Persisted preference: also show the formatting toolbar in normal mode. Focus
   // mode always shows it regardless; this only governs the non-focus layout.
   const [isFormattingToolbarVisible, setFormattingToolbarVisible] = useLocalStorage(FORMATTING_TOOLBAR_STORAGE_KEY, false);
 
   const memoName = memo?.name;
+  // Existing resources own their placement. New replies are not placed
+  // independently; only a new top-level memo inherits its host's target.
+  const editorSpace = memo ? memo.space : parentMemoName ? undefined : defaultSpace;
   const canTranscribe = useMemo(() => {
     const providerId = aiSetting.transcription?.providerId ?? "";
     if (!providerId) return false;
@@ -69,6 +91,7 @@ const MemoEditorImpl: React.FC<MemoEditorProps> = ({
 
   // Get default visibility from user settings
   const defaultVisibility = userGeneralSetting?.memoVisibility ? convertVisibilityFromString(userGeneralSetting.memoVisibility) : undefined;
+  const editorCacheKey = cacheService.key(currentUser?.name ?? "", cacheKey);
 
   const { isInitialized } = useMemoInit({
     editorRef,
@@ -80,6 +103,10 @@ const MemoEditorImpl: React.FC<MemoEditorProps> = ({
     defaultCreateTime,
   });
   const isDraftCacheEnabled = !memo;
+
+  useEffect(() => {
+    onSavingChange?.(isSaving);
+  }, [isSaving, onSavingChange]);
 
   // Auto-save content to localStorage (subscribes to the store internally).
   const { discardDraft } = useAutoSave(currentUser?.name ?? "", cacheKey, isInitialized && isDraftCacheEnabled);
@@ -187,9 +214,28 @@ const MemoEditorImpl: React.FC<MemoEditorProps> = ({
     }
   }, [isAudioRecorderOpen, audioRecorder.error, audioRecorder.status, t]);
 
+  const rememberCursor = useCallback(() => {
+    const cursor = editorRef.current?.getCursor();
+    if (cursor !== undefined) {
+      cacheService.saveCursor(editorCacheKey, cursor);
+    }
+  }, [editorCacheKey]);
+
+  // Hosted: focus mode is the host's frame, so leaving it dismisses the host.
+  // Inline: focus mode is a view this editor owns and toggles in place.
   const handleToggleFocusMode = () => {
+    if (onFocusModeExit) {
+      rememberCursor();
+      onFocusModeExit();
+      return;
+    }
     dispatch(actions.toggleFocusMode());
   };
+
+  const handleCancel = useCallback(() => {
+    rememberCursor();
+    onCancel?.();
+  }, [onCancel, rememberCursor]);
 
   const handleToggleFormattingToolbar = useCallback(() => {
     setFormattingToolbarVisible((visible) => !visible);
@@ -207,6 +253,17 @@ const MemoEditorImpl: React.FC<MemoEditorProps> = ({
 
     void handleStartAudioRecording();
   };
+
+  /** Shared by the ＋ menu (no position) and by editor paste/drop (drop position). */
+  const handleInsertImages = useCallback(
+    (files: File[], position?: number) => {
+      if (getState().ui.isLoading.saving) return;
+      const { inline, attachments } = splitInlineLocalFiles(toLocalFiles(files, { createBlobUrl, saveMediaMetadata }));
+      attachments.forEach((file) => dispatch(actions.addLocalFile(file)));
+      inlineImageUpload.insertLocalImages(inline, position);
+    },
+    [actions, createBlobUrl, dispatch, getState, inlineImageUpload.insertLocalImages, saveMediaMetadata],
+  );
 
   const handleCancelAudioRecording = () => {
     setIsTranscribingAudio(false);
@@ -226,14 +283,26 @@ const MemoEditorImpl: React.FC<MemoEditorProps> = ({
     }
   };
 
+  // The ＋ menu's view toggles only describe how an inline editor presents
+  // itself, so a hosted editor offers neither: its host owns the frame, and
+  // focus mode already forces the formatting toolbar on.
+  const viewToggles: EditorViewToggles | undefined = onFocusModeExit
+    ? undefined
+    : {
+        onToggleFocusMode: handleToggleFocusMode,
+        isFormattingToolbarVisible,
+        onToggleFormattingToolbar: handleToggleFormattingToolbar,
+      };
+
   const handleSave = useMemoSave({
     memoName,
     parentMemoName,
+    defaultSpace,
     defaultVisibility,
     defaultCreateTime,
     discardDraft,
     onConfirm,
-    onCancel,
+    onCancel: onCancel ? handleCancel : undefined,
   });
 
   return (
@@ -259,11 +328,15 @@ const MemoEditorImpl: React.FC<MemoEditorProps> = ({
           !isFocusMode && className,
         )}
       >
-        {/* Formatting toolbar. Always shown in focus mode (with an exit button);
+        {/* Formatting toolbar. Always shown in focus mode (trailing the button
+            that leaves the current frame — minimize inline, close when hosted);
             in normal mode it appears only when the user toggled it on via the
             insert menu. */}
         {(isFocusMode || isFormattingToolbarVisible) && (
-          <FormattingToolbar controllerRef={editorRef} onExit={isFocusMode ? handleToggleFocusMode : undefined} />
+          <FormattingToolbar
+            controllerRef={editorRef}
+            exit={isFocusMode ? { action: onFocusModeExit ? "close" : "minimize", onExit: handleToggleFocusMode } : undefined}
+          />
         )}
 
         {(memoName || (!memo && hasTimestamp)) && (
@@ -273,7 +346,7 @@ const MemoEditorImpl: React.FC<MemoEditorProps> = ({
         )}
 
         {/* Editor content grows to fill available space in focus mode */}
-        <EditorContent ref={editorRef} placeholder={placeholder} onSubmit={handleSave} />
+        <EditorContent ref={editorRef} placeholder={placeholder} onSubmit={handleSave} onFiles={handleInsertImages} />
 
         {isAudioRecorderOpen && (audioRecorder.isBusy || isTranscribingAudio) && (
           <AudioRecorderPanel
@@ -289,15 +362,21 @@ const MemoEditorImpl: React.FC<MemoEditorProps> = ({
 
         {/* Metadata and toolbar grouped together at bottom */}
         <div className="w-full flex flex-col gap-2">
-          <EditorMetadata memoName={memoName} />
+          <EditorMetadata
+            memoName={memoName}
+            uploadingLocalFileURLs={inlineImageUpload.uploadingLocalFileURLs}
+            onInsertAttachments={inlineImageUpload.insertRemoteImages}
+            onInsertLocalFiles={inlineImageUpload.insertLocalImages}
+          />
           <AttachmentUploadProgress />
           <EditorToolbar
             onSave={handleSave}
-            onCancel={onCancel}
+            onCancel={onCancel ? handleCancel : undefined}
             memoName={memoName}
+            space={editorSpace}
             onAudioRecorderClick={handleAudioRecorderClick}
-            isFormattingToolbarVisible={isFormattingToolbarVisible}
-            onToggleFormattingToolbar={handleToggleFormattingToolbar}
+            viewToggles={viewToggles}
+            onInsertImages={handleInsertImages}
           />
         </div>
       </div>

@@ -2,6 +2,8 @@ package test
 
 import (
 	"context"
+	"fmt"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -151,6 +153,94 @@ func TestInstanceSettingGeneralSetting(t *testing.T) {
 	ts.Close()
 }
 
+func TestInstanceAccessSetting(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	ts := NewTestingStore(ctx, t)
+	defer ts.Close()
+
+	accessSetting, err := ts.GetInstanceAccessSetting(ctx)
+	require.NoError(t, err)
+	require.Equal(t, storepb.InstanceAccessMode_INSTANCE_ACCESS_MODE_PRIVATE, accessSetting.AccessMode)
+	allowsAnonymous, err := ts.AllowsAnonymousAccess(ctx)
+	require.NoError(t, err)
+	require.False(t, allowsAnonymous)
+
+	_, err = ts.UpsertInstanceSetting(ctx, &storepb.InstanceSetting{
+		Key: storepb.InstanceSettingKey_ACCESS,
+		Value: &storepb.InstanceSetting_AccessSetting{AccessSetting: &storepb.InstanceAccessSetting{
+			AccessMode: storepb.InstanceAccessMode_INSTANCE_ACCESS_MODE_PUBLIC,
+		}},
+	})
+	require.NoError(t, err)
+
+	stored, err := ts.GetStoredInstanceSetting(ctx, &store.FindInstanceSetting{Name: storepb.InstanceSettingKey_ACCESS.String()})
+	require.NoError(t, err)
+	require.Equal(t, storepb.InstanceAccessMode_INSTANCE_ACCESS_MODE_PUBLIC, stored.GetAccessSetting().AccessMode)
+
+	accessSetting, err = ts.GetInstanceAccessSetting(ctx)
+	require.NoError(t, err)
+	require.Equal(t, storepb.InstanceAccessMode_INSTANCE_ACCESS_MODE_PUBLIC, accessSetting.AccessMode)
+	allowsAnonymous, err = ts.AllowsAnonymousAccess(ctx)
+	require.NoError(t, err)
+	require.True(t, allowsAnonymous)
+}
+
+func TestCreateInstanceSettingIfNotExistsIsFirstWriterWins(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	ts := NewTestingStore(ctx, t)
+	defer ts.Close()
+
+	const candidateCount = 16
+	type result struct {
+		value   string
+		created bool
+		err     error
+	}
+	start := make(chan struct{})
+	results := make(chan result, candidateCount)
+	for i := 0; i < candidateCount; i++ {
+		value := fmt.Sprintf("candidate-%02d", i)
+		go func() {
+			<-start
+			created, err := ts.GetDriver().CreateInstanceSettingIfNotExists(ctx, &store.InstanceSetting{
+				Name:  "ATOMIC_CREATE_TEST",
+				Value: value,
+			})
+			results <- result{value: value, created: created, err: err}
+		}()
+	}
+	close(start)
+
+	winner := ""
+	for range candidateCount {
+		result := <-results
+		require.NoError(t, result.err)
+		if result.created {
+			require.Empty(t, winner, "only one concurrent insert may create the setting")
+			winner = result.value
+		}
+	}
+	require.NotEmpty(t, winner, "one concurrent insert must create the setting")
+
+	settings, err := ts.GetDriver().ListInstanceSettings(ctx, &store.FindInstanceSetting{Name: "ATOMIC_CREATE_TEST"})
+	require.NoError(t, err)
+	require.Len(t, settings, 1)
+	require.Equal(t, winner, settings[0].Value, "the database must retain the first inserted value")
+
+	created, err := ts.GetDriver().CreateInstanceSettingIfNotExists(ctx, &store.InstanceSetting{
+		Name:  "ATOMIC_CREATE_TEST",
+		Value: "must-not-overwrite",
+	})
+	require.NoError(t, err)
+	require.False(t, created)
+	settings, err = ts.GetDriver().ListInstanceSettings(ctx, &store.FindInstanceSetting{Name: "ATOMIC_CREATE_TEST"})
+	require.NoError(t, err)
+	require.Len(t, settings, 1)
+	require.Equal(t, winner, settings[0].Value, "a later insert attempt must not overwrite the persisted value")
+}
+
 func TestInstanceSettingMemoRelatedSetting(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -219,6 +309,103 @@ func TestInstanceSettingStorageSetting(t *testing.T) {
 	require.Equal(t, "uploads/{date}/{filename}", storageSetting.FilepathTemplate)
 
 	ts.Close()
+}
+
+func TestDeleteInstanceStorageSettingInvalidatesCaches(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	ts := NewTestingStore(ctx, t)
+	defer ts.Close()
+
+	upserted, err := ts.UpsertInstanceSetting(ctx, &storepb.InstanceSetting{
+		Key: storepb.InstanceSettingKey_STORAGE,
+		Value: &storepb.InstanceSetting_StorageSetting{
+			StorageSetting: &storepb.InstanceStorageSetting{
+				DefaultStorageId: "primary",
+				Storages: []*storepb.Storage{
+					{
+						Id:   "primary",
+						Type: storepb.StorageType_STORAGE_TYPE_S3,
+						Config: &storepb.Storage_S3Config{S3Config: &storepb.StorageS3Config{
+							AccessKeyId:     "access-key",
+							AccessKeySecret: "secret",
+							Endpoint:        "https://s3.example.com",
+							Region:          "us-east-1",
+							Bucket:          "memos",
+						}},
+					},
+				},
+			},
+		},
+	})
+	require.NoError(t, err)
+	configuredStorage := store.GetDefaultStorage(upserted.GetStorageSetting())
+	require.NotNil(t, configuredStorage)
+
+	cachedDriver, err := ts.StorageDriver(ctx, configuredStorage)
+	require.NoError(t, err)
+	_, err = ts.GetInstanceStorageSetting(ctx)
+	require.NoError(t, err)
+
+	err = ts.DeleteInstanceSetting(ctx, &store.DeleteInstanceSetting{Name: storepb.InstanceSettingKey_STORAGE.String()})
+	require.NoError(t, err)
+
+	stored, err := ts.GetStoredInstanceSetting(ctx, &store.FindInstanceSetting{Name: storepb.InstanceSettingKey_STORAGE.String()})
+	require.NoError(t, err)
+	require.Nil(t, stored)
+	defaultSetting, err := ts.GetInstanceStorageSetting(ctx)
+	require.NoError(t, err)
+	require.Equal(t, storepb.InstanceStorageSetting_LOCAL, defaultSetting.StorageType)
+	require.Nil(t, defaultSetting.S3Config)
+
+	rebuiltDriver, err := ts.StorageDriver(ctx, configuredStorage)
+	require.NoError(t, err)
+	require.NotSame(t, cachedDriver, rebuiltDriver)
+}
+
+func TestInstanceStorageSettingCacheIsolation(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	ts := NewTestingStore(ctx, t)
+	defer ts.Close()
+
+	_, err := ts.UpsertInstanceSetting(ctx, &storepb.InstanceSetting{
+		Key: storepb.InstanceSettingKey_STORAGE,
+		Value: &storepb.InstanceSetting_StorageSetting{
+			StorageSetting: &storepb.InstanceStorageSetting{StorageType: storepb.InstanceStorageSetting_LOCAL},
+		},
+	})
+	require.NoError(t, err)
+
+	first, err := ts.GetInstanceStorageSetting(ctx)
+	require.NoError(t, err)
+	require.NotEmpty(t, first.Storages)
+	first.Storages[0].Name = "caller mutation"
+
+	second, err := ts.GetInstanceStorageSetting(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "Local", second.Storages[0].Name)
+
+	start := make(chan struct{})
+	errCh := make(chan error, 16)
+	var wg sync.WaitGroup
+	for range 16 {
+		wg.Go(func() {
+			<-start
+			for range 50 {
+				if _, err := ts.GetInstanceStorageSetting(ctx); err != nil {
+					errCh <- err
+					return
+				}
+			}
+		})
+	}
+	close(start)
+	wg.Wait()
+	close(errCh)
+	for err := range errCh {
+		require.NoError(t, err)
+	}
 }
 
 func TestInstanceSettingTagsSetting(t *testing.T) {

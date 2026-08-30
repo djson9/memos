@@ -23,7 +23,6 @@
     "archive": "เก็บถาวร",
     "archived": "เก็บถาวรแล้ว",
     "attachments": "ไฟล์แนบ",
-    "auto-expand": "ขยายอัตโนมัติ",
     "avatar": "สัญลักษณ์",
     "basic": "ทั่วไป",
     "beta": "รุ่นเบต้า",
@@ -65,6 +64,7 @@
     "last-updated-at": "อัปเดตล่าสุดเมื่อ",
     "learn-more": "เรียนรู้เพิ่มเติม",
     "link": "ลิงก์",
+    "manage": "จัดการ",
     "map": "แผนที่",
     "mark": "ทำเครื่องหมาย",
     "memo": "บันทึกช่วยจำ",
@@ -95,8 +95,6 @@
     "select": "เลือก",
     "settings": "ตั้งค่า",
     "share": "แชร์",
-    "shortcut-filter": "ตัวกรองทางลัด",
-    "shortcuts": "ทางลัด",
     "sign-in": "เข้าระบบ",
     "sign-in-with": "เข้าระบบโดย {{provider}}",
     "sign-out": "ออกจากระบบ",
@@ -114,6 +112,7 @@
     "username": "ชื่อผู้ใช้",
     "version": "เวอร์ชั่น",
     "visibility": "การมองเห็น",
+    "views": "มุมมอง",
     "yourself": "ตัวคุณ"
   },
   "locale-picker": {
@@ -191,6 +190,7 @@
     "filters": {
       "has-code": "มีโค้ด",
       "has-link": "มีลิงก์",
+      "has-location": "มีตำแหน่ง",
       "has-task-list": "มีรายการที่ต้องทำ",
       "label": "ตัวกรอง"
     },
@@ -334,9 +334,9 @@
       "theme": "ธีม",
       "label": "การตั้งค่า"
     },
-    "shortcut": {
-      "delete-confirm": "คุณแน่ใจหรือไม่ที่จะลบทางลัด `{{title}}`?",
-      "delete-success": "ทางลัด `{{title}}` ลบเรียบร้อยแล้ว"
+    "memo-view": {
+      "delete-confirm": "คุณแน่ใจหรือไม่ว่าต้องการลบมุมมอง `{{title}}`?",
+      "delete-success": "ลบมุมมอง `{{title}}` เรียบร้อยแล้ว"
     },
     "sso": {
       "authorization-endpoint": "Endpoint การอนุญาต",
@@ -378,7 +378,6 @@
       "path": "ที่จัดเก็บ",
       "path-description": "คุณสามารถใช้ตัวแปรไดนามิกเดียวกันจากที่จัดเก็บในตัวเครื่อง เช่น {filename}",
       "path-placeholder": "กำหนดเอง/เส้นทาง",
-      "presign-placeholder": "Pre-sign URL ไม่บังคับ",
       "region": "ภูมิภาค",
       "region-placeholder": "ชื่อภูมิภาค",
       "s3-compatible-url": "URL ที่เข้ากันได้กับ S3",

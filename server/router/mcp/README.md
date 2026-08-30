@@ -15,7 +15,7 @@ source of truth and reuses the API's authentication and authorization as-is.
 
 ## Integration
 
-`server.NewServer` calls `mcp.NewMCPService` after registering the API, file, RSS, and gRPC-gateway routes, passing the same Echo server:
+`server.NewServer` calls `mcp.NewMCPService` after registering the API, file, and gRPC-gateway routes, passing the same Echo server:
 
 ```go
 mcpService, err := mcp.NewMCPService(profile, echoServer)
@@ -139,7 +139,7 @@ a personal access token as a bearer credential. Example client config:
 
 The server exposes a curated allowlist (`curatedOperationIDs` in `catalog.go`),
 centered on memos and attachments, plus two read-only orientation tools:
-`shortcut_list_shortcuts` (surfaces a user's saved CEL filters for reuse with
+`memo_view_list_memo_views` (surfaces a user's named CEL filters for reuse with
 `memo_list_memos`) and `auth_get_current_user` (a "whoami" so an agent can
 resolve its own user — the single allowed auth/identity operation):
 
@@ -163,7 +163,7 @@ resolve its own user — the single allowed auth/identity operation):
 | `AttachmentService_CreateAttachment` | `attachment_create_attachment` |
 | `AttachmentService_GetAttachment` | `attachment_get_attachment` |
 | `AttachmentService_DeleteAttachment` | `attachment_delete_attachment` |
-| `ShortcutService_ListShortcuts` | `shortcut_list_shortcuts` |
+| `MemoViewService_ListMemoViews` | `memo_view_list_memo_views` |
 | `AuthService_GetCurrentUser` | `auth_get_current_user` |
 
 **Naming rule** (`toolNameFromOperationID`): drop the `Service` suffix from the
@@ -197,6 +197,15 @@ not replace API authorization.
 
 This is deliberate: it fixes [#6022](https://github.com/usememos/memos/issues/6022),
 where collection tools returned a bare array that strict MCP clients reject.
+
+Inside that envelope the API's JSON is passed through verbatim, so the gateway's
+own encoding is part of the tool contract: whatever it emits is validated against
+the output schema resolved from the same OpenAPI spec. grpc-gateway's stock
+marshaler emits `null` for unset message fields, which no schema declares as
+nullable — `RegisterGateway` therefore installs a marshaler that omits them
+(`newGatewayMarshaler` in `server/router/api/v1/v1.go`). That fixes
+[#6139](https://github.com/usememos/memos/issues/6139), where `"motionMedia": null`
+failed every tool call returning an attachment.
 
 ## Error handling
 

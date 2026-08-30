@@ -23,7 +23,6 @@
     "archive": "Lưu trữ",
     "archived": "Đã lưu trữ",
     "attachments": "Tệp đính kèm",
-    "auto-expand": "Mở rộng tự động",
     "avatar": "Ảnh đại diện",
     "basic": "Cơ bản",
     "beta": "Beta",
@@ -65,6 +64,7 @@
     "last-updated-at": "Cập nhật lần cuối",
     "learn-more": "Tìm hiểu thêm",
     "link": "Liên kết",
+    "manage": "Quản lý",
     "map": "Bản đồ",
     "mark": "Đánh dấu",
     "memo": "Ghi chú",
@@ -95,8 +95,6 @@
     "select": "Chọn",
     "settings": "Cài đặt",
     "share": "Chia sẻ",
-    "shortcut-filter": "Bộ lọc phím tắt",
-    "shortcuts": "Phím tắt",
     "sign-in": "Đăng nhập",
     "sign-in-with": "Đăng nhập bằng {{provider}}",
     "sign-out": "Đăng xuất",
@@ -114,6 +112,7 @@
     "username": "Tên người dùng",
     "version": "Phiên bản",
     "visibility": "Quyền xem",
+    "views": "Các chế độ xem",
     "yourself": "Bản thân"
   },
   "locale-picker": {
@@ -191,6 +190,7 @@
     "filters": {
       "has-code": "cóMã",
       "has-link": "cóLiênKết",
+      "has-location": "có vị trí",
       "has-task-list": "cóDanhSáchViệc",
       "label": "Bộ lọc"
     },
@@ -334,9 +334,9 @@
       "theme": "Giao diện",
       "label": "Tùy chỉnh"
     },
-    "shortcut": {
-      "delete-confirm": "Bạn có chắc chắn muốn xóa phím tắt `{{title}}`?",
-      "delete-success": "Đã xóa phím tắt `{{title}}` thành công"
+    "memo-view": {
+      "delete-confirm": "Bạn có chắc chắn muốn xóa chế độ xem `{{title}}`?",
+      "delete-success": "Đã xóa chế độ xem `{{title}}` thành công"
     },
     "sso": {
       "authorization-endpoint": "Điểm cuối xác thực",
@@ -378,7 +378,6 @@
       "path": "Đường dẫn lưu trữ",
       "path-description": "Bạn có thể sử dụng các biến động như trong lưu trữ cục bộ, ví dụ {filename}",
       "path-placeholder": "đường/dẫn/tùy-chỉnh",
-      "presign-placeholder": "URL ký trước, tùy chọn",
       "region": "Khu vực",
       "region-placeholder": "Tên khu vực",
       "s3-compatible-url": "URL tương thích S3",

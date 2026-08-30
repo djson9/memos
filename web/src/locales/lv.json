@@ -61,7 +61,6 @@
     "archive": "Arhīvs",
     "archived": "Arhivēts",
     "attachments": "Pielikumi",
-    "auto-expand": "Automātiski izvērst",
     "avatar": "Iemiesojums",
     "basic": "Pamata",
     "beta": "Beta",
@@ -104,6 +103,7 @@
     "last-updated-at": "Pēdējo reizi atjaunināts plkst",
     "learn-more": "Uzziniet vairāk",
     "link": "Saite",
+    "manage": "Pārvaldīt",
     "map": "Karte",
     "mark": "Atzīmēt",
     "memo": "Piezīme",
@@ -134,8 +134,6 @@
     "select": "Izvēlieties",
     "settings": "Iestatījumi",
     "share": "Dalīties",
-    "shortcut-filter": "Īsceļu filtrs",
-    "shortcuts": "Īsceļi",
     "sign-in": "Pierakstīties",
     "sign-in-with": "Pierakstieties ar {{provider}}",
     "sign-out": "Izrakstīties",
@@ -154,6 +152,7 @@
     "username": "Lietotājvārds",
     "version": "Versija",
     "visibility": "Redzamība",
+    "views": "Skati",
     "yourself": "sevi"
   },
   "locale-picker": {
@@ -243,6 +242,7 @@
     "filters": {
       "has-code": "hasCode",
       "has-link": "hasLink",
+      "has-location": "ir atrašanās vieta",
       "has-task-list": "hasTaskList",
       "label": "Filtri"
     },
@@ -572,9 +572,9 @@
       "theme-description": "Šajā ierīcē nekavējoties tiek lietots atlasītais motīvs.",
       "theme": "Tēma"
     },
-    "shortcut": {
-      "delete-confirm": "Vai tiešām vēlaties dzēst saīsni `{{title}}`?",
-      "delete-success": "Īsceļš `{{title}}` veiksmīgi izdzēsts"
+    "memo-view": {
+      "delete-confirm": "Vai tiešām vēlaties dzēst skatu `{{title}}`?",
+      "delete-success": "Skats `{{title}}` veiksmīgi izdzēsts"
     },
     "sso": {
       "account": "Konts",
@@ -670,7 +670,6 @@
       "path": "Uzglabāšanas ceļš",
       "path-description": "Varat izmantot tos pašus dinamiskos mainīgos no vietējās krātuves, piemēram, {filename}",
       "path-placeholder": "pielāgots/ceļš",
-      "presign-placeholder": "Iepriekš paraksta URL, pēc izvēles",
       "region": "Reģions",
       "region-description": "Reģions, ko pieprasa pakalpojumu sniedzējs. Dažiem saderīgiem pakalpojumiem pietiek ar jebkuru pakalpojumu sniedzēja akceptētu reģiona virkni.",
       "region-placeholder": "Reģiona nosaukums",

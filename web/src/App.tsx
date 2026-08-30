@@ -1,7 +1,7 @@
+import { DirectionProvider } from "@base-ui/react/direction-provider";
 import { useEffect } from "react";
 import { Outlet, ScrollRestoration } from "react-router-dom";
 import { useInstance } from "./contexts/InstanceContext";
-import { MemoFilterProvider } from "./contexts/MemoFilterContext";
 import useNavigateTo from "./hooks/useNavigateTo";
 import { useUserLocale } from "./hooks/useUserLocale";
 import { useUserTheme } from "./hooks/useUserTheme";
@@ -12,7 +12,7 @@ const App = () => {
   const { profile: instanceProfile, profileLoaded, generalSetting: instanceGeneralSetting } = useInstance();
 
   // Apply user preferences reactively
-  useUserLocale();
+  const direction = useUserLocale();
   useUserTheme();
 
   // Clean up expired OAuth states on app initialization
@@ -59,12 +59,10 @@ const App = () => {
   }, [instanceGeneralSetting.customProfile]);
 
   return (
-    <>
-      <MemoFilterProvider>
-        <Outlet />
-      </MemoFilterProvider>
+    <DirectionProvider direction={direction}>
+      <Outlet />
       <ScrollRestoration />
-    </>
+    </DirectionProvider>
   );
 };
 

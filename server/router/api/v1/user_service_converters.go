@@ -100,8 +100,8 @@ func convertSettingKeyFromStore(key storepb.UserSetting_Key) string {
 	switch key {
 	case storepb.UserSetting_GENERAL:
 		return v1pb.UserSetting_Key_name[int32(v1pb.UserSetting_GENERAL)]
-	case storepb.UserSetting_SHORTCUTS:
-		return "SHORTCUTS" // Not defined in API proto
+	case storepb.UserSetting_MEMO_VIEWS:
+		return "MEMO_VIEWS" // Not defined in API proto
 	case storepb.UserSetting_WEBHOOKS:
 		return v1pb.UserSetting_Key_name[int32(v1pb.UserSetting_WEBHOOKS)]
 	case storepb.UserSetting_TAGS:
@@ -187,9 +187,10 @@ func convertUserSettingFromStore(storeSetting *storepb.UserSetting, user *store.
 		if general := storeSetting.GetGeneral(); general != nil {
 			setting.Value = &v1pb.UserSetting_GeneralSetting_{
 				GeneralSetting: &v1pb.UserSetting_GeneralSetting{
-					Locale:         general.Locale,
-					MemoVisibility: general.MemoVisibility,
-					Theme:          general.Theme,
+					Locale:            general.Locale,
+					MemoVisibility:    general.MemoVisibility,
+					Theme:             general.Theme,
+					SaveMediaMetadata: general.SaveMediaMetadata,
 				},
 			}
 		} else {
@@ -240,9 +241,10 @@ func convertUserSettingToStore(apiSetting *v1pb.UserSetting, userID int32, key s
 		if general := apiSetting.GetGeneralSetting(); general != nil {
 			storeSetting.Value = &storepb.UserSetting_General{
 				General: &storepb.GeneralUserSetting{
-					Locale:         general.Locale,
-					MemoVisibility: general.MemoVisibility,
-					Theme:          general.Theme,
+					Locale:            general.Locale,
+					MemoVisibility:    general.MemoVisibility,
+					Theme:             general.Theme,
+					SaveMediaMetadata: general.SaveMediaMetadata,
 				},
 			}
 		} else {

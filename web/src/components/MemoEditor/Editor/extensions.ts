@@ -3,12 +3,13 @@ import { markdown } from "@codemirror/lang-markdown";
 import { indentUnit } from "@codemirror/language";
 import { Compartment, type Extension } from "@codemirror/state";
 import { placeholder as cmPlaceholder, dropCursor, EditorView, type KeyBinding, keymap } from "@codemirror/view";
-import { GFM } from "@lezer/markdown";
+import { memoMarkdownExtensions } from "@/utils/memo-markdown-extension";
 import { headingDecorations } from "./headingDecorations";
 import { liftListItem, sinkListItem } from "./listIndent";
 import { tagAutocomplete } from "./tagAutocomplete";
 import { tagMentionDecorations } from "./tagMentionDecorations";
 import { memoEditorTheme } from "./theme";
+import { uploadAnchorField } from "./uploadAnchors";
 
 // Key bindings layered below the autocomplete keymap so the completion popup's
 // own Tab/Escape win while it is open. On a list item, Tab/Shift-Tab nest /
@@ -30,7 +31,7 @@ const editorKeys: KeyBinding[] = [
 export interface EditorExtensionsOptions {
   placeholder: string;
   onChange: (markdown: string) => void;
-  onFiles: (files: File[]) => void;
+  onFiles: (files: File[], position: number) => void;
   onUpdate: () => void;
   onSubmit: () => void;
   getTags: () => string[];
@@ -77,26 +78,38 @@ export function buildEditorExtensions({
     dropCursor(),
     // Indent with spaces (markdown), matching the 2-space bullet nesting.
     indentUnit.of("  "),
-    markdown({ extensions: [GFM] }),
+    markdown({ extensions: memoMarkdownExtensions }),
     ...memoEditorTheme,
     EditorView.lineWrapping,
+    // CodeMirror disables native text assistance because it is primarily a code
+    // editor. Memos is a prose editor, so restore the browser behavior used by
+    // the textarea editor before v0.30. Autocorrect also keeps Windows TSF input
+    // out of Chrome's autocorrect-suppression path, which has dropped committed
+    // text from the emoji picker.
+    EditorView.contentAttributes.of({
+      autocorrect: "on",
+      autocapitalize: "on",
+      spellcheck: "true",
+    }),
     placeholderCompartment.of(cmPlaceholder(placeholder)),
     EditorView.domEventHandlers({
-      paste: (event) => {
+      paste: (event, view) => {
         const files = clipboardFiles(event);
         if (files.length === 0) return false;
-        onFiles(files);
+        onFiles(files, view.state.selection.main.head);
         return true;
       },
-      drop: (event) => {
+      drop: (event, view) => {
         const files = Array.from(event.dataTransfer?.files ?? []);
         if (files.length === 0) return false;
-        onFiles(files);
+        const position = view.posAtCoords({ x: event.clientX, y: event.clientY }) ?? view.state.selection.main.head;
+        onFiles(files, position);
         return true;
       },
     }),
     tagMentionDecorations,
     headingDecorations,
+    uploadAnchorField,
     // tagAutocomplete must precede the editing keymap so the completion popup's
     // Enter/Tab/arrow bindings win while it is open.
     tagAutocomplete(getTags),

@@ -2,6 +2,7 @@ package v1
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 
 	"connectrpc.com/connect"
@@ -11,6 +12,7 @@ import (
 	"golang.org/x/sync/semaphore"
 
 	"github.com/usememos/memos/internal/attachmentcompression"
+	"github.com/usememos/memos/internal/httpgetter"
 	"github.com/usememos/memos/internal/markdown"
 	"github.com/usememos/memos/internal/profile"
 	v1pb "github.com/usememos/memos/proto/gen/api/v1"
@@ -29,9 +31,10 @@ type APIV1Service struct {
 	v1pb.UnimplementedAuthServiceServer
 	v1pb.UnimplementedUserServiceServer
 	v1pb.UnimplementedMemoServiceServer
+	v1pb.UnimplementedSpaceServiceServer
 	v1pb.UnimplementedAttachmentServiceServer
 	v1pb.UnimplementedAIServiceServer
-	v1pb.UnimplementedShortcutServiceServer
+	v1pb.UnimplementedMemoViewServiceServer
 	v1pb.UnimplementedIdentityProviderServiceServer
 
 	Secret                  string
@@ -49,15 +52,18 @@ type APIV1Service struct {
 
 	// instanceStatsCache memoizes GetInstanceStats results for instanceStatsCacheTTL.
 	instanceStatsCache instanceStatsCache
+
+	linkMetadataFetcher linkMetadataFetcher
 }
 
+// NewAPIV1Service creates an API v1 service with its shared dependencies.
 func NewAPIV1Service(secret string, profile *profile.Profile, store *store.Store) *APIV1Service {
 	markdownService := markdown.NewService(
 		markdown.WithTagExtension(),
 		markdown.WithMentionExtension(),
 	)
 	mediaCompressionMaxInputBytes := profile.MediaCompressionMaxInputMB * MebiByte
-	return &APIV1Service{
+	service := &APIV1Service{
 		Secret:                    secret,
 		Profile:                   profile,
 		Store:                     store,
@@ -73,13 +79,34 @@ func NewAPIV1Service(secret string, profile *profile.Profile, store *store.Store
 			CPULimitPercent: profile.MediaCompressionCPULimit,
 		}),
 	}
+	service.linkMetadataFetcher = httpgetter.NewHTMLMetaFetcher()
+	return service
+}
+
+// newGatewayMarshaler mirrors grpc-gateway's default JSON marshaler with one
+// change: EmitDefaultValues replaces EmitUnpopulated. Both keep proto3 scalar
+// defaults ("" / 0 / false) and empty lists in the payload — the generated
+// OpenAPI schema declares several of them required — but EmitUnpopulated also
+// writes `null` for every unset message field (e.g. Attachment.motion_media on
+// a plain image). No schema marks those fields nullable, so a client that
+// validates responses against the spec rejects them; the MCP tools serve the
+// same schema as their outputSchema, and strict MCP clients fail every call
+// that returns an attachment. EmitDefaultValues omits unset message fields
+// instead, which the schema already allows.
+func newGatewayMarshaler() *runtime.HTTPBodyMarshaler {
+	return &runtime.HTTPBodyMarshaler{
+		Marshaler: &runtime.JSONPb{
+			EmitDefaultValues: true,
+			DiscardUnknown:    true,
+		},
+	}
 }
 
 // RegisterGateway registers the gRPC-Gateway and Connect handlers with the given Echo instance.
 func (s *APIV1Service) RegisterGateway(ctx context.Context, echoServer *echo.Echo) error {
 	// Shared authorizer: one source of truth for authentication and anonymous-access
 	// policy, used by both the gRPC-Gateway middleware and the Connect interceptor.
-	authorizer := NewAuthorizer(s.Store, s.Secret, s.Profile)
+	authorizer := NewAuthorizer(s.Store, s.Secret)
 
 	// grpc-gateway does not hand the matched procedure to middleware:
 	// runtime.RPCMethod is only populated by the generated handler, which runs
@@ -92,6 +119,10 @@ func (s *APIV1Service) RegisterGateway(ctx context.Context, echoServer *echo.Ech
 
 	gatewayAuthMiddleware := func(next runtime.HandlerFunc) runtime.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+			// grpc-gateway does not pass through the Connect metadata interceptor.
+			// Apply the same no-store policy here so a memo that later loses access
+			// cannot remain readable from a browser or intermediary response cache.
+			setAPIResponseNoStoreHeaders(w.Header())
 			ctx := r.Context()
 
 			authHeader := r.Header.Get("Authorization")
@@ -103,7 +134,7 @@ func (s *APIV1Service) RegisterGateway(ctx context.Context, echoServer *echo.Ech
 			// access-control gap.
 			procedure, _ := routeResolver.resolveRequest(r)
 			if err := authorizer.CheckAccess(ctx, procedure, result); err != nil {
-				http.Error(w, `{"code": 16, "message": "authentication required"}`, http.StatusUnauthorized)
+				writeGatewayAuthorizationError(w, err)
 				return
 			}
 
@@ -118,6 +149,7 @@ func (s *APIV1Service) RegisterGateway(ctx context.Context, echoServer *echo.Ech
 
 	// Create gRPC-Gateway mux with auth middleware.
 	gwMux := runtime.NewServeMux(
+		runtime.WithMarshalerOption(runtime.MIMEWildcard, newGatewayMarshaler()),
 		runtime.WithMiddlewares(gatewayAuthMiddleware),
 	)
 	if err := v1pb.RegisterInstanceServiceHandlerServer(ctx, gwMux, s); err != nil {
@@ -132,13 +164,16 @@ func (s *APIV1Service) RegisterGateway(ctx context.Context, echoServer *echo.Ech
 	if err := v1pb.RegisterMemoServiceHandlerServer(ctx, gwMux, s); err != nil {
 		return err
 	}
+	if err := v1pb.RegisterSpaceServiceHandlerServer(ctx, gwMux, s); err != nil {
+		return err
+	}
 	if err := v1pb.RegisterAttachmentServiceHandlerServer(ctx, gwMux, s); err != nil {
 		return err
 	}
 	if err := v1pb.RegisterAIServiceHandlerServer(ctx, gwMux, s); err != nil {
 		return err
 	}
-	if err := v1pb.RegisterShortcutServiceHandlerServer(ctx, gwMux, s); err != nil {
+	if err := v1pb.RegisterMemoViewServiceHandlerServer(ctx, gwMux, s); err != nil {
 		return err
 	}
 	if err := v1pb.RegisterIdentityProviderServiceHandlerServer(ctx, gwMux, s); err != nil {
@@ -168,4 +203,19 @@ func (s *APIV1Service) RegisterGateway(ctx context.Context, echoServer *echo.Ech
 	connectGroup.Any("/memos.api.v1.*", echo.WrapHandler(http.MaxBytesHandler(connectMux, MaxAPIRequestBytes)))
 
 	return nil
+}
+
+func setAPIResponseNoStoreHeaders(header http.Header) {
+	header.Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	header.Set("Pragma", "no-cache")
+	header.Set("Expires", "0")
+}
+
+func writeGatewayAuthorizationError(w http.ResponseWriter, err error) {
+	if errors.Is(err, ErrUnauthenticated) {
+		http.Error(w, `{"code": 16, "message": "authentication required"}`, http.StatusUnauthorized)
+		return
+	}
+	slog.Error("failed to resolve API access policy", "error", err)
+	http.Error(w, `{"code": 13, "message": "failed to resolve API access policy"}`, http.StatusInternalServerError)
 }

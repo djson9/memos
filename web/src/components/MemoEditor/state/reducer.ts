@@ -7,15 +7,21 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       return {
         ...state,
         content: action.payload.content,
+        contentSource: "external",
         metadata: action.payload.metadata,
         timestamps: action.payload.timestamps,
       };
 
-    case "UPDATE_CONTENT":
+    case "UPDATE_CONTENT": {
+      if (state.content === action.payload.content && state.contentSource === action.payload.source) {
+        return state;
+      }
       return {
         ...state,
-        content: action.payload,
+        content: action.payload.content,
+        contentSource: action.payload.source,
       };
+    }
 
     case "SET_METADATA":
       return {
@@ -62,6 +68,15 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
             ...state.ui.isLoading,
             [action.payload.key]: action.payload.value,
           },
+        },
+      };
+
+    case "SET_PENDING_INLINE_IMAGE_INSERTIONS":
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          pendingInlineImageInsertions: action.payload,
         },
       };
 

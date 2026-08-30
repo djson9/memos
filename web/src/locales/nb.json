@@ -24,7 +24,6 @@
     "archive": "Arkiver",
     "archived": "Arkivert",
     "attachments": "Vedlegg",
-    "auto-expand": "Ekspander automatisk",
     "avatar": "Avatar",
     "basic": "Grunnleggende",
     "beta": "Beta",
@@ -66,6 +65,7 @@
     "last-updated-at": "Sist oppdatert",
     "learn-more": "Lær mer",
     "link": "Link",
+    "manage": "Administrer",
     "map": "Kart",
     "mark": "Merk",
     "memo": "Memo",
@@ -96,8 +96,6 @@
     "select": "Velg",
     "settings": "Innstillinger",
     "share": "Del",
-    "shortcut-filter": "Snarveifilter",
-    "shortcuts": "Snarveier",
     "sign-in": "Logg inn",
     "sign-in-with": "Logg inn med {{provider}}",
     "sign-out": "Logg ut",
@@ -115,6 +113,7 @@
     "username": "Brukernavn",
     "version": "Versjon",
     "visibility": "Synlighet",
+    "views": "Visninger",
     "yourself": "Deg selv",
     "empty-placeholder": "Tømme",
     "unlink": "Fjern tilknytningen"
@@ -205,6 +204,7 @@
     "filters": {
       "has-code": "harKode",
       "has-link": "harLink",
+      "has-location": "har posisjon",
       "has-task-list": "harGjøremålsListe",
       "label": "Filtre"
     },
@@ -455,9 +455,9 @@
       "memo-defaults-title": "Memo standarder",
       "theme-description": "Bruker det valgte temaet umiddelbart på denne enheten."
     },
-    "shortcut": {
-      "delete-confirm": "Er du sikker på at du vil slette snarveien `{{title}}`?",
-      "delete-success": "Snarvei `{{title}}` slettet vellykket"
+    "memo-view": {
+      "delete-confirm": "Er du sikker på at du vil slette visningen `{{title}}`?",
+      "delete-success": "Visning `{{title}}` slettet vellykket"
     },
     "sso": {
       "authorization-endpoint": "Autorisasjon endepunkt",
@@ -540,7 +540,6 @@
       "path": "Lagringssti",
       "path-description": "Du kan bruke de samme dynamiske variablene fra lokal lagring, som {filename}",
       "path-placeholder": "egen/sti",
-      "presign-placeholder": "Pre-sign URL, valgfritt",
       "region": "Region",
       "region-placeholder": "Navn på region",
       "s3-compatible-url": "S3-kompatibel URL",

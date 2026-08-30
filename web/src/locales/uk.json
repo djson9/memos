@@ -24,7 +24,6 @@
     "archive": "Архів",
     "archived": "Архівовано",
     "attachments": "Вкладення",
-    "auto-expand": "Авторозгортання",
     "avatar": "Аватар",
     "basic": "Основний",
     "beta": "Бета-версія",
@@ -66,6 +65,7 @@
     "last-updated-at": "Останнє оновлення",
     "learn-more": "Дізнатися більше",
     "link": "Посилання",
+    "manage": "Керувати",
     "map": "Мапа",
     "mark": "Позначити",
     "memo": "Нотатка",
@@ -96,8 +96,6 @@
     "select": "Вибрати",
     "settings": "Налаштування",
     "share": "Поділитися",
-    "shortcut-filter": "Фільтр ярликів",
-    "shortcuts": "Ярлики",
     "sign-in": "Увійти",
     "sign-in-with": "Увійти через {{provider}}",
     "sign-out": "Вийти",
@@ -115,6 +113,7 @@
     "username": "Ім'я користувача",
     "version": "Версія",
     "visibility": "Видимість",
+    "views": "Подання",
     "yourself": "Ви",
     "empty-placeholder": "Порожній",
     "unlink": "Від’єднати"
@@ -205,6 +204,7 @@
     "filters": {
       "has-code": "єКод",
       "has-link": "єПосилання",
+      "has-location": "є розташування",
       "has-task-list": "єСписокЗавдань",
       "label": "Фільтри"
     },
@@ -455,9 +455,9 @@
       "memo-defaults-title": "Пам'ятки за замовчуванням",
       "theme-description": "Вибрану тему негайно застосовує на цьому пристрої."
     },
-    "shortcut": {
-      "delete-confirm": "Ви впевнені, що хочете видалити ярлик `{{title}}`?",
-      "delete-success": "Ярлик `{{title}}` успішно видалено"
+    "memo-view": {
+      "delete-confirm": "Ви впевнені, що хочете видалити подання `{{title}}`?",
+      "delete-success": "Подання `{{title}}` успішно видалено"
     },
     "sso": {
       "authorization-endpoint": "Точка авторизації",
@@ -540,7 +540,6 @@
       "path": "Шлях до сховища",
       "path-description": "Ви можете використовувати ті ж динамічні змінні з локального сховища, такі як {filename}",
       "path-placeholder": "налаштований/шлях",
-      "presign-placeholder": "Пресигн URL, необов'язково",
       "region": "Регіон",
       "region-placeholder": "Назва регіону",
       "s3-compatible-url": "S3 Сумісний URL",
