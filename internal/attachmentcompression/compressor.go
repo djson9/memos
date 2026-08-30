@@ -221,7 +221,7 @@ func (c *Compressor) compressImage(
 	outputOptions := ""
 
 	switch inputMIMEType {
-	case "image/jpeg", "image/jpg":
+	case "image/jpeg", "image/jpg", "image/heic", "image/heif", "image/tiff":
 		outputMIMEType = "image/jpeg"
 		outputExtension = ".jpg"
 		outputOptions = fmt.Sprintf("Q=%d,strip,optimize-coding,interlace", defaultImageQuality)
@@ -229,10 +229,6 @@ func (c *Compressor) compressImage(
 		outputOptions = "compression=9,strip"
 	case "image/webp":
 		outputOptions = fmt.Sprintf("Q=%d,strip,effort=6", defaultImageQuality)
-	case "image/heic", "image/heif", "image/tiff":
-		outputMIMEType = "image/jpeg"
-		outputExtension = ".jpg"
-		outputOptions = fmt.Sprintf("Q=%d,strip,optimize-coding,interlace", defaultImageQuality)
 	default:
 		return "", "", "", errors.Errorf("unsupported image MIME type %q", inputMIMEType)
 	}
