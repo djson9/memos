@@ -18,6 +18,7 @@ const (
 	SSEEventMemoCommentCreated SSEEventType = "memo.comment.created"
 	SSEEventReactionUpserted   SSEEventType = "reaction.upserted"
 	SSEEventReactionDeleted    SSEEventType = "reaction.deleted"
+	SSEEventAttachmentProgress SSEEventType = "attachment.progress"
 )
 
 // SSEEvent represents a change event sent to SSE clients.
@@ -28,6 +29,10 @@ type SSEEvent struct {
 	Name string `json:"name"`
 	// Parent is the parent memo resource name when the affected resource is a comment.
 	Parent string `json:"parent,omitempty"`
+	// Attachment progress fields are populated only for attachment.progress events.
+	Filename string `json:"filename,omitempty"`
+	Stage    string `json:"stage,omitempty"`
+	Progress int    `json:"progress,omitempty"`
 	// Visibility and CreatorID are used only for server-side delivery filtering.
 	Visibility store.Visibility `json:"-"`
 	CreatorID  int32            `json:"-"`

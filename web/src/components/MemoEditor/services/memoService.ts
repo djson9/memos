@@ -7,6 +7,7 @@ import { AttachmentSchema } from "@/types/proto/api/v1/attachment_service_pb";
 import type { Memo } from "@/types/proto/api/v1/memo_service_pb";
 import { MemoSchema } from "@/types/proto/api/v1/memo_service_pb";
 import type { EditorState } from "../state";
+import type { UploadProgress } from "../types/attachment";
 import { uploadService } from "./uploadService";
 
 /**
@@ -79,10 +80,11 @@ export const memoService = {
     options: {
       memoName?: string;
       parentMemoName?: string;
+      onUploadProgress?: (progress: UploadProgress) => void;
     },
   ): Promise<{ memoName: string; hasChanges: boolean }> {
     // 1. Upload local files first
-    const newAttachments = await uploadService.uploadFiles(state.localFiles);
+    const newAttachments = await uploadService.uploadFiles(state.localFiles, options.onUploadProgress);
     const allAttachments = [...state.metadata.attachments, ...newAttachments];
 
     // 2. Update existing memo

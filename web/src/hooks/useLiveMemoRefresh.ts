@@ -4,6 +4,7 @@ import { getRequestToken, refreshAccessToken } from "@/connect";
 import { useAuth } from "@/contexts/AuthContext";
 import { memoKeys } from "@/hooks/useMemoQueries";
 import { userKeys } from "@/hooks/useUserQueries";
+import { publishAttachmentProgress } from "@/utils/attachmentProgress";
 
 /**
  * Reconnection parameters for SSE connection.
@@ -19,6 +20,7 @@ const SSE_EVENT_TYPES = {
   memoCommentCreated: "memo.comment.created",
   reactionUpserted: "reaction.upserted",
   reactionDeleted: "reaction.deleted",
+  attachmentProgress: "attachment.progress",
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -214,10 +216,22 @@ interface SSEChangeEvent {
   type: (typeof SSE_EVENT_TYPES)[keyof typeof SSE_EVENT_TYPES];
   name: string;
   parent?: string;
+  filename?: string;
+  stage?: string;
+  progress?: number;
 }
 
 function handleSSEEvent(event: SSEChangeEvent, queryClient: ReturnType<typeof useQueryClient>) {
   switch (event.type) {
+    case SSE_EVENT_TYPES.attachmentProgress:
+      publishAttachmentProgress({
+        name: event.name,
+        filename: event.filename ?? "attachment",
+        stage: event.stage ?? "compressing",
+        progress: event.progress ?? 0,
+      });
+      break;
+
     case SSE_EVENT_TYPES.memoCreated:
       queryClient.invalidateQueries({ queryKey: memoKeys.lists() });
       queryClient.invalidateQueries({ queryKey: userKeys.stats() });

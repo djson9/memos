@@ -34,6 +34,12 @@ type Profile struct {
 	Commit string
 	// InstanceURL is the url of your memos instance.
 	InstanceURL string
+	// MediaCompression enables native image and video compression before attachments are stored.
+	MediaCompression bool
+	// MediaCompressionMaxInputMB caps source media accepted for compression.
+	MediaCompressionMaxInputMB int
+	// MediaCompressionCPULimit caps compressor subprocess CPU usage as a percentage of one core.
+	MediaCompressionCPULimit int
 }
 
 // AllowAnonymous reports whether unauthenticated visitors may access the instance.

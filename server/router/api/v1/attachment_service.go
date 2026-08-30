@@ -2,7 +2,6 @@ package v1
 
 import (
 	"context"
-	"encoding/binary"
 	"fmt"
 	"log/slog"
 	"mime"
@@ -102,6 +101,7 @@ func (s *APIV1Service) CreateAttachment(ctx context.Context, request *v1pb.Creat
 		Filename:  request.Attachment.Filename,
 		Type:      request.Attachment.Type,
 	}
+	s.broadcastAttachmentProgress(create, user.ID, "received", 5)
 
 	inputMotionMedia, err := validateClientMotionMedia(request.Attachment.MotionMedia, attachmentUID)
 	if err != nil {
@@ -116,16 +116,16 @@ func (s *APIV1Service) CreateAttachment(ctx context.Context, request *v1pb.Creat
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get instance storage setting: %v", err)
 	}
-	size := binary.Size(request.Attachment.Content)
+	size := len(request.Attachment.Content)
 	uploadSizeLimit := int(instanceStorageSetting.UploadSizeLimitMb) * MebiByte
 	if uploadSizeLimit == 0 {
 		uploadSizeLimit = MaxUploadBufferSizeBytes
 	}
-	if size > uploadSizeLimit {
-		return nil, status.Errorf(codes.InvalidArgument, "file size exceeds the limit")
-	}
 	create.Size = int64(size)
 	create.Blob = request.Attachment.Content
+	if size > uploadSizeLimit && !s.attachmentFitsCompressionInput(create) {
+		return nil, status.Errorf(codes.InvalidArgument, "file size exceeds the limit")
+	}
 
 	if request.Attachment.Memo != nil {
 		memoUID, err := ExtractMemoUIDFromName(*request.Attachment.Memo)
@@ -152,9 +152,19 @@ func (s *APIV1Service) CreateAttachment(ctx context.Context, request *v1pb.Creat
 		}
 	}
 
+	mediaCompressed, compressionErr := s.compressAttachment(ctx, create, user.ID)
+	if compressionErr != nil {
+		// Compression is best-effort for media already within the configured
+		// upload limit. Oversized media will still be rejected by the final check.
+		slog.Warn("failed to compress attachment",
+			slog.String("type", create.Type),
+			slog.String("filename", create.Filename),
+			slog.String("error", compressionErr.Error()))
+	}
+
 	// Strip EXIF metadata from images for privacy protection.
 	// This removes sensitive information like GPS location, device details, etc.
-	if shouldStripExif(create.Type) && !isAndroidMotionContainer(create.Payload.GetMotionMedia()) {
+	if !mediaCompressed && shouldStripExif(create.Type) && !isAndroidMotionContainer(create.Payload.GetMotionMedia()) {
 		release, err := s.acquireImageProcessingSlot(ctx)
 		if err != nil {
 			return nil, status.Errorf(codes.ResourceExhausted, "too many image processing requests")
@@ -172,7 +182,11 @@ func (s *APIV1Service) CreateAttachment(ctx context.Context, request *v1pb.Creat
 			create.Size = int64(len(strippedBlob))
 		}
 	}
+	if len(create.Blob) > uploadSizeLimit {
+		return nil, status.Errorf(codes.InvalidArgument, "file size exceeds the limit after media compression")
+	}
 
+	s.broadcastAttachmentProgress(create, user.ID, "saving", 95)
 	if err := SaveAttachmentBlob(ctx, s.Profile, s.Store, create); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to save attachment blob: %v", err)
 	}
@@ -181,6 +195,7 @@ func (s *APIV1Service) CreateAttachment(ctx context.Context, request *v1pb.Creat
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create attachment: %v", err)
 	}
+	s.broadcastAttachmentProgress(create, user.ID, "complete", 100)
 
 	return convertAttachmentFromStore(attachment), nil
 }

@@ -35,14 +35,17 @@ var (
 		Short: `An open source, lightweight note-taking service. Easily capture and share your great thoughts.`,
 		Run: func(_ *cobra.Command, _ []string) {
 			instanceProfile := &profile.Profile{
-				Demo:        viper.GetBool("demo"),
-				Addr:        viper.GetString("addr"),
-				Port:        viper.GetInt("port"),
-				UNIXSock:    viper.GetString("unix-sock"),
-				Data:        viper.GetString("data"),
-				Driver:      viper.GetString("driver"),
-				DSN:         viper.GetString("dsn"),
-				InstanceURL: viper.GetString("instance-url"),
+				Demo:                       viper.GetBool("demo"),
+				Addr:                       viper.GetString("addr"),
+				Port:                       viper.GetInt("port"),
+				UNIXSock:                   viper.GetString("unix-sock"),
+				Data:                       viper.GetString("data"),
+				Driver:                     viper.GetString("driver"),
+				DSN:                        viper.GetString("dsn"),
+				InstanceURL:                viper.GetString("instance-url"),
+				MediaCompression:           viper.GetBool("media-compression"),
+				MediaCompressionMaxInputMB: viper.GetInt("media-compression-max-input-mb"),
+				MediaCompressionCPULimit:   viper.GetInt("media-compression-cpu-limit"),
 			}
 			instanceProfile.Version = version.GetCurrentVersion()
 			instanceProfile.Commit = version.Commit
@@ -121,6 +124,9 @@ func init() {
 	viper.SetDefault("demo", false)
 	viper.SetDefault("driver", "sqlite")
 	viper.SetDefault("port", 8081)
+	viper.SetDefault("media-compression", false)
+	viper.SetDefault("media-compression-max-input-mb", 200)
+	viper.SetDefault("media-compression-cpu-limit", 150)
 
 	rootCmd.PersistentFlags().Bool("demo", false, "enable demo mode")
 	rootCmd.PersistentFlags().String("addr", "", "address of server")
@@ -132,6 +138,9 @@ func init() {
 	rootCmd.PersistentFlags().String("instance-url", "", "the url of your memos instance")
 	rootCmd.PersistentFlags().Bool("allow-private-webhooks", false, "allow webhook URLs to resolve to private/reserved IP addresses")
 	rootCmd.PersistentFlags().String("log-level", "info", "log verbosity level (debug, info, warn, error)")
+	rootCmd.PersistentFlags().Bool("media-compression", false, "compress image and video attachments before storage")
+	rootCmd.PersistentFlags().Int("media-compression-max-input-mb", 200, "maximum source media size accepted for compression in MiB")
+	rootCmd.PersistentFlags().Int("media-compression-cpu-limit", 150, "compressor CPU limit as a percentage of one core")
 
 	if err := viper.BindPFlag("demo", rootCmd.PersistentFlags().Lookup("demo")); err != nil {
 		panic(err)
@@ -161,6 +170,15 @@ func init() {
 		panic(err)
 	}
 	if err := viper.BindPFlag("log-level", rootCmd.PersistentFlags().Lookup("log-level")); err != nil {
+		panic(err)
+	}
+	if err := viper.BindPFlag("media-compression", rootCmd.PersistentFlags().Lookup("media-compression")); err != nil {
+		panic(err)
+	}
+	if err := viper.BindPFlag("media-compression-max-input-mb", rootCmd.PersistentFlags().Lookup("media-compression-max-input-mb")); err != nil {
+		panic(err)
+	}
+	if err := viper.BindPFlag("media-compression-cpu-limit", rootCmd.PersistentFlags().Lookup("media-compression-cpu-limit")); err != nil {
 		panic(err)
 	}
 

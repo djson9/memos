@@ -1,7 +1,7 @@
 import type { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
 import type { Location, MemoRelation } from "@/types/proto/api/v1/memo_service_pb";
 import { Visibility } from "@/types/proto/api/v1/memo_service_pb";
-import type { LocalFile } from "../types/attachment";
+import type { LocalFile, UploadProgress } from "../types/attachment";
 
 export type LoadingKey = "saving" | "uploading" | "loading";
 
@@ -26,6 +26,7 @@ export interface EditorState {
     updateTime?: Date;
   };
   localFiles: LocalFile[];
+  uploadProgress?: UploadProgress;
   /** Whether an audio recording is in flight; gates save. The recorder's full
    *  state lives in useAudioRecorder — only this shared bit reaches the store. */
   recorderBusy: boolean;
@@ -42,6 +43,7 @@ export type EditorAction =
   | { type: "SET_LOADING"; payload: { key: LoadingKey; value: boolean } }
   | { type: "SET_TIMESTAMPS"; payload: Partial<EditorState["timestamps"]> }
   | { type: "SET_RECORDER_BUSY"; payload: boolean }
+  | { type: "SET_UPLOAD_PROGRESS"; payload?: UploadProgress }
   | { type: "RESET" };
 
 // Module-private template for createInitialState.
@@ -66,6 +68,7 @@ const defaultState: EditorState = {
     updateTime: undefined,
   },
   localFiles: [],
+  uploadProgress: undefined,
   recorderBusy: false,
 };
 

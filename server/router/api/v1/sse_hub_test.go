@@ -116,6 +116,24 @@ func TestSSEEvent_JSON(t *testing.T) {
 	assert.Contains(t, string(data), `"parent":"memos/123"`)
 }
 
+func TestSSEEvent_AttachmentProgressJSON(t *testing.T) {
+	e := &SSEEvent{
+		Type:     SSEEventAttachmentProgress,
+		Name:     "attachments/upload-id",
+		Filename: "clip.mp4",
+		Stage:    "compressing",
+		Progress: 63,
+	}
+	data := e.JSON()
+	require.JSONEq(t, `{
+		"type": "attachment.progress",
+		"name": "attachments/upload-id",
+		"filename": "clip.mp4",
+		"stage": "compressing",
+		"progress": 63
+	}`, string(data))
+}
+
 func TestSSEHub_PrivateEventsAreScoped(t *testing.T) {
 	hub := NewSSEHub()
 	owner := hub.Subscribe(1, store.RoleUser)

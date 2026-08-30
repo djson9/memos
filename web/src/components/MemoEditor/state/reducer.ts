@@ -80,6 +80,12 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         recorderBusy: action.payload,
       };
 
+    case "SET_UPLOAD_PROGRESS":
+      return {
+        ...state,
+        uploadProgress: action.payload,
+      };
+
     case "RESET":
       return createInitialState();
 
