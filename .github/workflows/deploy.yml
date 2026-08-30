@@ -114,10 +114,10 @@ jobs:
       - name: Verify production health and frontend
         run: |
           set -euo pipefail
-          curl --fail --silent --show-error \
+          curl --noproxy '*' --fail --silent --show-error \
             --retry 12 --retry-all-errors --retry-delay 5 \
             https://jays-vm.tailade3f5.ts.net:8450/healthz
-          frontend="$(curl --fail --silent --show-error \
+          frontend="$(curl --noproxy '*' --fail --silent --show-error \
             --retry 12 --retry-all-errors --retry-delay 5 \
             https://jays-vm.tailade3f5.ts.net:8450/)"
           ! grep -Fq 'No embeddable frontend found.' <<< "$frontend"
