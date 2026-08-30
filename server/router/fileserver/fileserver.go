@@ -670,6 +670,9 @@ func (s *FileServerService) checkAttachmentPermission(ctx context.Context, c *ec
 	if memo == nil {
 		return echo.NewHTTPError(http.StatusNotFound, "memo not found")
 	}
+	if s.Profile.AllowUnauthenticatedAttachments {
+		return nil
+	}
 
 	// Public-visibility attachments are served to anonymous visitors only when the
 	// instance allows anonymous access. On a private instance (no InstanceURL), the

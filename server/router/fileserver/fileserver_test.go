@@ -503,6 +503,66 @@ func TestServeAttachmentFile_PrivateInstanceDeniesAnonymous(t *testing.T) {
 	require.Equal(t, http.StatusUnauthorized, anonymousGet())
 }
 
+func TestServeAttachmentFile_AllowUnauthenticatedAttachments(t *testing.T) {
+	ctx := context.Background()
+	svc, fs, _, cleanup := newShareAttachmentTestServices(ctx, t)
+	defer cleanup()
+
+	creator, err := svc.Store.CreateUser(ctx, &store.User{
+		Username: "tailnet-owner",
+		Role:     store.RoleUser,
+		Email:    "tailnet-owner@example.com",
+	})
+	require.NoError(t, err)
+	creatorCtx := context.WithValue(ctx, auth.UserIDContextKey, creator.ID)
+
+	linkedAttachment, err := svc.CreateAttachment(creatorCtx, &apiv1.CreateAttachmentRequest{
+		Attachment: &apiv1.Attachment{
+			Filename: "linked.txt",
+			Type:     "text/plain",
+			Content:  []byte("linked content"),
+		},
+	})
+	require.NoError(t, err)
+	_, err = svc.CreateMemo(creatorCtx, &apiv1.CreateMemoRequest{
+		Memo: &apiv1.Memo{
+			Content:     "private tailnet memo",
+			Visibility:  apiv1.Visibility_PRIVATE,
+			Attachments: []*apiv1.Attachment{{Name: linkedAttachment.Name}},
+		},
+	})
+	require.NoError(t, err)
+
+	unlinkedAttachment, err := svc.CreateAttachment(creatorCtx, &apiv1.CreateAttachmentRequest{
+		Attachment: &apiv1.Attachment{
+			Filename: "unlinked.txt",
+			Type:     "text/plain",
+			Content:  []byte("unlinked content"),
+		},
+	})
+	require.NoError(t, err)
+
+	e := echo.New()
+	fs.RegisterRoutes(e)
+	request := func(attachment *apiv1.Attachment) *httptest.ResponseRecorder {
+		rec := httptest.NewRecorder()
+		url := fmt.Sprintf("/file/%s/%s", attachment.Name, attachment.Filename)
+		e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, url, nil))
+		return rec
+	}
+
+	// The opt-in is disabled by default.
+	require.Equal(t, http.StatusUnauthorized, request(linkedAttachment).Code)
+
+	fs.Profile.AllowUnauthenticatedAttachments = true
+	linkedResponse := request(linkedAttachment)
+	require.Equal(t, http.StatusOK, linkedResponse.Code)
+	require.Equal(t, "linked content", linkedResponse.Body.String())
+
+	// In-progress uploads that are not linked to a memo remain private.
+	require.Equal(t, http.StatusUnauthorized, request(unlinkedAttachment).Code)
+}
+
 // TestServeUserAvatar_PrivateInstanceRequiresAuth verifies that avatars are exposed
 // to anonymous visitors on an open instance but require authentication on a private
 // instance.

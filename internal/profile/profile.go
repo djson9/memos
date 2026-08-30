@@ -40,6 +40,8 @@ type Profile struct {
 	MediaCompressionMaxInputMB int
 	// MediaCompressionCPULimit caps compressor subprocess CPU usage as a percentage of one core.
 	MediaCompressionCPULimit int
+	// AllowUnauthenticatedAttachments exposes attachments linked to memos without requiring a session or token.
+	AllowUnauthenticatedAttachments bool
 }
 
 // AllowAnonymous reports whether unauthenticated visitors may access the instance.

@@ -35,17 +35,18 @@ var (
 		Short: `An open source, lightweight note-taking service. Easily capture and share your great thoughts.`,
 		Run: func(_ *cobra.Command, _ []string) {
 			instanceProfile := &profile.Profile{
-				Demo:                       viper.GetBool("demo"),
-				Addr:                       viper.GetString("addr"),
-				Port:                       viper.GetInt("port"),
-				UNIXSock:                   viper.GetString("unix-sock"),
-				Data:                       viper.GetString("data"),
-				Driver:                     viper.GetString("driver"),
-				DSN:                        viper.GetString("dsn"),
-				InstanceURL:                viper.GetString("instance-url"),
-				MediaCompression:           viper.GetBool("media-compression"),
-				MediaCompressionMaxInputMB: viper.GetInt("media-compression-max-input-mb"),
-				MediaCompressionCPULimit:   viper.GetInt("media-compression-cpu-limit"),
+				Demo:                            viper.GetBool("demo"),
+				Addr:                            viper.GetString("addr"),
+				Port:                            viper.GetInt("port"),
+				UNIXSock:                        viper.GetString("unix-sock"),
+				Data:                            viper.GetString("data"),
+				Driver:                          viper.GetString("driver"),
+				DSN:                             viper.GetString("dsn"),
+				InstanceURL:                     viper.GetString("instance-url"),
+				MediaCompression:                viper.GetBool("media-compression"),
+				MediaCompressionMaxInputMB:      viper.GetInt("media-compression-max-input-mb"),
+				MediaCompressionCPULimit:        viper.GetInt("media-compression-cpu-limit"),
+				AllowUnauthenticatedAttachments: viper.GetBool("allow-unauthenticated-attachments"),
 			}
 			instanceProfile.Version = version.GetCurrentVersion()
 			instanceProfile.Commit = version.Commit
@@ -127,6 +128,7 @@ func init() {
 	viper.SetDefault("media-compression", false)
 	viper.SetDefault("media-compression-max-input-mb", 200)
 	viper.SetDefault("media-compression-cpu-limit", 150)
+	viper.SetDefault("allow-unauthenticated-attachments", false)
 
 	rootCmd.PersistentFlags().Bool("demo", false, "enable demo mode")
 	rootCmd.PersistentFlags().String("addr", "", "address of server")
@@ -141,6 +143,7 @@ func init() {
 	rootCmd.PersistentFlags().Bool("media-compression", false, "compress image and video attachments before storage")
 	rootCmd.PersistentFlags().Int("media-compression-max-input-mb", 200, "maximum source media size accepted for compression in MiB")
 	rootCmd.PersistentFlags().Int("media-compression-cpu-limit", 150, "compressor CPU limit as a percentage of one core")
+	rootCmd.PersistentFlags().Bool("allow-unauthenticated-attachments", false, "serve attachments linked to memos without authentication")
 
 	if err := viper.BindPFlag("demo", rootCmd.PersistentFlags().Lookup("demo")); err != nil {
 		panic(err)
@@ -179,6 +182,9 @@ func init() {
 		panic(err)
 	}
 	if err := viper.BindPFlag("media-compression-cpu-limit", rootCmd.PersistentFlags().Lookup("media-compression-cpu-limit")); err != nil {
+		panic(err)
+	}
+	if err := viper.BindPFlag("allow-unauthenticated-attachments", rootCmd.PersistentFlags().Lookup("allow-unauthenticated-attachments")); err != nil {
 		panic(err)
 	}
 

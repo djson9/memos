@@ -45,7 +45,11 @@ GET /file/attachments/:uid/:filename[?thumbnail=true]
 - `filename` - Original filename
 - `thumbnail` (optional) - Return thumbnail for images
 
-**Authentication:** Required for non-public memos
+**Authentication:** Required for non-public memos by default. Operators may set
+`MEMOS_ALLOW_UNAUTHENTICATED_ATTACHMENTS=true` to expose attachments already
+linked to a memo without a session or token; unlinked uploads remain protected.
+Enable this only when the service is reachable exclusively through a trusted
+private network or access-controlled reverse proxy.
 
 **Response:**
 - `200 OK` - File content with proper Content-Type
