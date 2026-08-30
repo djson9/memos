@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+# One-time, idempotent setup for the djson9/memos production runner on jays-vm.
+set -euo pipefail
+
+: "${RUNNER_TOKEN:?RUNNER_TOKEN must contain a short-lived GitHub runner registration token}"
+
+repo_url=https://github.com/djson9/memos
+source_url=https://github.com/djson9/memos.git
+source_repo=/home/davidson/workspace/deploy/memos
+runner_user=memos-actions-runner
+runner_home=/var/lib/memos-actions-runner
+runner_dir="$runner_home/app"
+runner_name=jays-vm-memos-production
+runner_version=2.337.0
+runner_archive="actions-runner-linux-x64-${runner_version}.tar.gz"
+runner_sha256=70920811a4f8ad4328818682bca5c6469c1c942fab52448868071d0063816613
+unit=actions.runner.djson9-memos.jays-vm-memos-production.service
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+temporary=""
+
+cleanup() {
+  if [[ -n "$temporary" && -d "$temporary" ]]; then
+    rm -rf -- "$temporary"
+  fi
+}
+trap cleanup EXIT
+
+if [[ $EUID -ne 0 ]]; then
+  echo "run this provisioning script as root" >&2
+  exit 1
+fi
+
+if ! id "$runner_user" >/dev/null 2>&1; then
+  useradd --system --create-home --home-dir "$runner_home" --shell /bin/bash "$runner_user"
+fi
+install -d -m 0750 -o "$runner_user" -g "$runner_user" "$runner_home" "$runner_dir"
+
+if [[ ! -f "$runner_dir/.runner" ]]; then
+  if [[ -n "$(find "$runner_dir" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
+    echo "unconfigured runner directory is not empty: $runner_dir" >&2
+    exit 1
+  fi
+  temporary="$(mktemp -d /tmp/memos-runner.XXXXXX)"
+  curl --fail --location --silent --show-error \
+    "https://github.com/actions/runner/releases/download/v${runner_version}/${runner_archive}" \
+    --output "$temporary/$runner_archive"
+  echo "$runner_sha256  $temporary/$runner_archive" | sha256sum --check
+  tar -xzf "$temporary/$runner_archive" -C "$runner_dir"
+  chown -R "$runner_user:$runner_user" "$runner_dir"
+  sudo -u "$runner_user" -H "$runner_dir/config.sh" \
+    --unattended \
+    --url "$repo_url" \
+    --token "$RUNNER_TOKEN" \
+    --name "$runner_name" \
+    --labels memos-production \
+    --work _work \
+    --replace
+fi
+unset RUNNER_TOKEN
+
+install -m 0755 -o root -g root "$script_dir/memos-deploy" /usr/local/sbin/memos-deploy
+visudo -cf "$script_dir/memos-actions-runner.sudoers"
+install -m 0440 -o root -g root \
+  "$script_dir/memos-actions-runner.sudoers" /etc/sudoers.d/memos-actions-runner
+install -m 0644 -o root -g root \
+  "$script_dir/$unit" "/etc/systemd/system/$unit"
+
+install -d -m 0755 /home/davidson/workspace/deploy
+if [[ ! -d "$source_repo/.git" ]]; then
+  git clone "$source_url" "$source_repo"
+fi
+git -C "$source_repo" remote set-url origin "$source_url"
+git -C "$source_repo" fetch --quiet --prune origin
+
+install -d -m 0755 /opt/memos /opt/memos/backups /var/lib/memos
+if [[ ! -f /opt/memos/.env ]]; then
+  current_image="$(docker inspect memos --format '{{.Config.Image}}' 2>/dev/null || true)"
+  : "${current_image:=djson9/memos:v0.30.0-media.2}"
+  printf 'MEMOS_IMAGE=%s\n' "$current_image" >/opt/memos/.env
+  chmod 0644 /opt/memos/.env
+fi
+if [[ -f /opt/memos/compose.yaml ]] && ! cmp -s "$script_dir/compose.production.yaml" /opt/memos/compose.yaml; then
+  cp -a /opt/memos/compose.yaml "/opt/memos/backups/compose.pre-runner.$(date -u +%Y%m%dT%H%M%SZ).yaml"
+fi
+install -m 0644 -o root -g root "$script_dir/compose.production.yaml" /opt/memos/compose.yaml
+
+systemctl daemon-reload
+systemctl enable --now "$unit"
+for _attempt in {1..20}; do
+  systemctl is-active --quiet "$unit" && break
+  sleep 1
+done
+systemctl is-active --quiet "$unit"
+
+echo "Provisioned $runner_name for djson9/memos"

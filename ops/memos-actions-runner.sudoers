@@ -1,0 +1,2 @@
+Cmnd_Alias MEMOS_DEPLOY = /usr/local/sbin/memos-deploy ^[0-9a-f]{40}\ [A-Za-z0-9._-]+$
+memos-actions-runner ALL=(root) NOPASSWD: MEMOS_DEPLOY

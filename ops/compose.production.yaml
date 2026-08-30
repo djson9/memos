@@ -1,0 +1,23 @@
+services:
+  memos:
+    image: "${MEMOS_IMAGE:?MEMOS_IMAGE must name the locally built release image}"
+    container_name: memos
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5230:5230"
+    volumes:
+      - ./data:/var/opt/memos
+    environment:
+      MEMOS_PORT: "5230"
+      MEMOS_DRIVER: sqlite
+      MEMOS_MEDIA_COMPRESSION: "true"
+      MEMOS_MEDIA_COMPRESSION_MAX_INPUT_MB: "200"
+      MEMOS_MEDIA_COMPRESSION_CPU_LIMIT: "150"
+      MEMOS_ALLOW_UNAUTHENTICATED_ATTACHMENTS: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:5230/healthz >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    stop_grace_period: 30s

@@ -1,0 +1,168 @@
+#!/usr/bin/env bash
+# Root-owned exact-SHA builder and rollback-safe installer for Memos production.
+set -euo pipefail
+
+source_repo=/home/davidson/workspace/deploy/memos
+deploy_root=/opt/memos
+compose_file="$deploy_root/compose.yaml"
+env_file="$deploy_root/.env"
+state_dir=/var/lib/memos
+state_file="$state_dir/deploy-state.json"
+lock_file=/var/lock/memos-deploy.lock
+image_repository=djson9/memos
+frontend_builder=node:24-alpine
+smoke_port=15230
+staging_dir=""
+smoke_container=""
+deployment_started=false
+previous_image=""
+
+sha="${1:-}"
+github_run_id="${2:-manual}"
+if [[ ! "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+  echo "expected a full lowercase commit SHA" >&2
+  exit 2
+fi
+if [[ ! "$github_run_id" =~ ^[A-Za-z0-9._-]+$ ]]; then
+  echo "invalid GitHub run id" >&2
+  exit 2
+fi
+if [[ ! -d "$source_repo/.git" ]]; then
+  echo "missing root-owned Memos source repository: $source_repo" >&2
+  exit 1
+fi
+if [[ ! -f "$compose_file" ]]; then
+  echo "missing production compose file: $compose_file" >&2
+  exit 1
+fi
+
+exec 9>"$lock_file"
+if ! flock -n 9; then
+  echo "another Memos deployment is already running" >&2
+  exit 75
+fi
+
+write_image_env() {
+  local image="$1" temporary
+  temporary="$(mktemp "$deploy_root/.env.XXXXXX")"
+  printf 'MEMOS_IMAGE=%s\n' "$image" >"$temporary"
+  chmod 0644 "$temporary"
+  mv -f "$temporary" "$env_file"
+}
+
+compose() {
+  docker compose --env-file "$env_file" --file "$compose_file" "$@"
+}
+
+wait_for_frontend() {
+  local base_url="$1" response attempt
+  for attempt in {1..40}; do
+    if curl --fail --silent --show-error "$base_url/healthz" >/dev/null 2>&1; then
+      response="$(curl --fail --silent --show-error "$base_url/" 2>/dev/null || true)"
+      if [[ "$response" == *'<script'* ]] && \
+         [[ "$response" != *'No embeddable frontend found.'* ]]; then
+        return 0
+      fi
+    fi
+    sleep 2
+  done
+  echo "Memos did not expose a healthy embedded frontend at $base_url" >&2
+  return 1
+}
+
+cleanup() {
+  if [[ -n "$smoke_container" ]]; then
+    docker rm --force "$smoke_container" >/dev/null 2>&1 || true
+  fi
+  if [[ -n "$staging_dir" && -d "$staging_dir" ]]; then
+    rm -rf -- "$staging_dir"
+  fi
+}
+
+finish() {
+  local status=$?
+  if [[ $status -ne 0 && "$deployment_started" == true && -n "$previous_image" ]]; then
+    echo "Deployment failed; rolling back to $previous_image" >&2
+    write_image_env "$previous_image"
+    compose up --detach --no-deps memos || true
+    wait_for_frontend http://127.0.0.1:5230 || true
+  fi
+  cleanup
+  exit "$status"
+}
+trap finish EXIT
+
+git -C "$source_repo" fetch --quiet --prune origin '+refs/heads/main:refs/remotes/origin/main'
+main_sha="$(git -C "$source_repo" rev-parse --verify 'refs/remotes/origin/main^{commit}')"
+git -C "$source_repo" cat-file -e "${sha}^{commit}"
+if ! git -C "$source_repo" merge-base --is-ancestor "$sha" "$main_sha"; then
+  echo "$sha is not an ancestor of main at $main_sha" >&2
+  exit 1
+fi
+
+image="$image_repository:sha-$sha"
+if ! docker image inspect "$image" >/dev/null 2>&1; then
+  staging_dir="$(mktemp -d /tmp/memos-deploy.XXXXXX)"
+  git -C "$source_repo" archive --format=tar "$sha" | tar -xf - -C "$staging_dir"
+
+  docker run --rm \
+    --env CI=true \
+    --volume "$staging_dir:/work" \
+    --workdir /work/web \
+    "$frontend_builder" \
+    sh -lc 'corepack pnpm@11.0.1 install --frozen-lockfile && corepack pnpm@11.0.1 run release'
+
+  frontend_index="$staging_dir/server/router/frontend/dist/index.html"
+  test -s "$frontend_index"
+  if grep -Fq 'No embeddable frontend found.' "$frontend_index"; then
+    echo "frontend release still contains the placeholder page" >&2
+    exit 1
+  fi
+  grep -Fq '<script' "$frontend_index"
+
+  docker build \
+    --pull \
+    --file "$staging_dir/scripts/Dockerfile" \
+    --build-arg "VERSION=git-${sha:0:12}" \
+    --build-arg "COMMIT=$sha" \
+    --label "org.opencontainers.image.revision=$sha" \
+    --label "org.opencontainers.image.source=https://github.com/djson9/memos" \
+    --tag "$image" \
+    "$staging_dir"
+fi
+
+smoke_container="memos-smoke-${github_run_id}"
+docker rm --force "$smoke_container" >/dev/null 2>&1 || true
+docker run --detach --rm \
+  --name "$smoke_container" \
+  --network host \
+  --env "MEMOS_PORT=$smoke_port" \
+  "$image" >/dev/null
+wait_for_frontend "http://127.0.0.1:$smoke_port"
+docker rm --force "$smoke_container" >/dev/null
+smoke_container=""
+
+previous_image="$(docker inspect memos --format '{{.Config.Image}}' 2>/dev/null || true)"
+if [[ -z "$previous_image" && -f "$env_file" ]]; then
+  previous_image="$(sed -n 's/^MEMOS_IMAGE=//p' "$env_file" | head -n 1)"
+fi
+
+deployment_started=true
+write_image_env "$image"
+compose up --detach --no-deps memos
+wait_for_frontend http://127.0.0.1:5230
+
+install -d -m 0755 "$state_dir"
+state_tmp="$(mktemp "$state_dir/.deploy-state.XXXXXX")"
+jq -n \
+  --arg sha "$sha" \
+  --arg image "$image" \
+  --arg previous_image "$previous_image" \
+  --arg github_run_id "$github_run_id" \
+  '{sha:$sha,image:$image,previousImage:$previous_image,githubRunId:$github_run_id,source:"github_actions",deployedAt:(now|floor)}' \
+  >"$state_tmp"
+chmod 0644 "$state_tmp"
+mv -f "$state_tmp" "$state_file"
+deployment_started=false
+
+echo "Deployed Memos $sha as $image"

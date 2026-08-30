@@ -1,0 +1,16 @@
+[Unit]
+Description=GitHub Actions Runner (djson9-memos.jays-vm-memos-production)
+Wants=network-online.target
+After=network-online.target
+RequiresMountsFor=/var/lib/memos-actions-runner
+
+[Service]
+ExecStart=/var/lib/memos-actions-runner/app/run.sh
+User=memos-actions-runner
+WorkingDirectory=/var/lib/memos-actions-runner/app
+KillMode=process
+KillSignal=SIGTERM
+TimeoutStopSec=5min
+
+[Install]
+WantedBy=multi-user.target
