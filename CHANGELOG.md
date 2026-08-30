@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.31.0-rc.2](https://github.com/usememos/memos/compare/v0.31.0-rc.1...v0.31.0-rc.2) (2026-08-30)
+
+
+### Bug Fixes
+
+* **editor:** enable native mobile text assistance ([#6248](https://github.com/usememos/memos/issues/6248)) ([2c7cf91](https://github.com/usememos/memos/commit/2c7cf91aac7cfeeb3107132c06ca4e5cd4b934f2))
+
 ## [0.31.0-rc.1](https://github.com/usememos/memos/compare/v0.30.0...v0.31.0-rc.1) (2026-08-30)
 
 
